@@ -6,9 +6,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import tdl.anonymize.image.ImageMasker;
+import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.FrameRecorder;
 import tdl.anonymize.image.ImageMaskerException;
+import tdl.anonymize.video.VideoMasker;
 
 /**
  * This will receive list of paths. The first path will be the main image,
@@ -21,9 +24,9 @@ public class AnonymizeApp {
     public List<String> paths = new ArrayList<>();
 
     @Parameter(names = {"-o", "--output"}, description = "The path to the recording file")
-    public String destinationPath = "./output.jpg";
+    public String destinationPath = "./output.mp4";
 
-    public static void main(String[] args) throws ImageMaskerException {
+    public static void main(String[] args) throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception {
         AnonymizeApp main = new AnonymizeApp();
         JCommander.newBuilder()
                 .addObject(main)
@@ -32,29 +35,16 @@ public class AnonymizeApp {
         main.run();
     }
 
-    public void run() throws ImageMaskerException {
+    public void run() throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception {
         if (paths.size() < 2) {
             throw new RuntimeException("Parameter has to be at least 2");
         }
-        String mainImage = paths.get(0);
+        Path videoPath = Paths.get(paths.get(0));
         paths.remove(0);
-
+        List<Path> subImagePaths = paths.stream().map(Paths::get).collect(Collectors.toList());
         Path destination = Paths.get(destinationPath);
-        ImageMasker masker = new ImageMasker(Paths.get(mainImage));
-        List<String> subImages = paths;
-
-        subImages.stream().forEach((subImage) -> {
-            try {
-                masker.findSubImageAndRemoveAllOccurences(Paths.get(subImage));
-            } catch (ImageMaskerException ex) {
-                log.warn("Cannot find image " + subImage);
-            }
-        });
-        masker.showImage(); //DEBUG
-        masker.saveImage(destination);
-    }
-
-    public static Path getOutputPath(Path output) {
-        return null;
+        
+        VideoMasker masker = new VideoMasker(videoPath, destination, subImagePaths);
+        masker.run();
     }
 }

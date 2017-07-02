@@ -2,13 +2,8 @@ package tdl.anonymize.video;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.opencv_core.Mat;
-import static org.bytedeco.javacpp.opencv_highgui.destroyAllWindows;
-import static org.bytedeco.javacpp.opencv_highgui.imshow;
-import static org.bytedeco.javacpp.opencv_highgui.waitKey;
 import org.bytedeco.javacpp.opencv_videoio;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
@@ -41,23 +36,21 @@ public class VideoMasker {
     }
 
     public void run() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
-        try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(inputPath.toFile())) {
+        try (FFmpegFrameGrabber grabber = createGrabber()) {
             grabber.start();
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
-                log.info("Frame count " + grabber.getLengthInFrames());
                 Frame frame;
                 ToMat frameConverter = new ToMat();
                 int currentFrame = 0;
                 while ((frame = grabber.grab()) != null) {
-                    log.info("Frame #" + (currentFrame++));
                     Mat image = frameConverter.convert(frame);
                     ImageMasker masker = new ImageMasker(image);
                     subImagePaths.stream().forEach((subImage) -> {
                         try {
                             masker.findSubImageAndRemoveAllOccurences(subImage);
                         } catch (ImageMaskerException ex) {
-                            log.error("Cannot find image in frame");
+                            //Do nothing
                         }
                     });
                     Mat editedImage = masker.getImage();
@@ -65,9 +58,7 @@ public class VideoMasker {
                     recorder.setTimestamp(grabber.getTimestamp());
                     recorder.record(editedFrame);
                 }
-                log.info("Saving new video");
             }
-            log.info("Closing old video");
         }
     }
 
