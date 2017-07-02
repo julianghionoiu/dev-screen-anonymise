@@ -18,6 +18,7 @@ public class ImageMaskerTest {
         Path subImagePath = Paths.get("./src/test/resources/images/subimage-1.jpg");
         ImageMasker matcher = new ImageMasker(mainImagePath);
         matcher.findSubImageAndRemoveAllOccurences(subImagePath);
+        //matcher.showImage();
     }
 
     @Test

@@ -22,6 +22,7 @@ import static org.bytedeco.javacpp.opencv_highgui.imshow;
 import static org.bytedeco.javacpp.opencv_highgui.waitKey;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imwrite;
+import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2GRAY;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_FILLED;
 import static org.bytedeco.javacpp.opencv_imgproc.TM_CCORR_NORMED;
@@ -40,12 +41,12 @@ public class ImageMasker {
         image = imread(imagePath.toString());
         throwExceptionIfMainImageIsEmpty();
     }
-    
+
     public ImageMasker(Mat image) throws ImageMaskerException {
         this.image = image;
         throwExceptionIfMainImageIsEmpty();
     }
-    
+
     private final void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
         if (image.empty()) {
             throw new ImageMaskerException("Cannot open image");
@@ -100,28 +101,19 @@ public class ImageMasker {
     }
 
     private static void removeRegionFromImage(Mat image, Rect rect) {
-        Scalar randomColor = new Scalar(255, 0, 0, 0);
-        rectangle(image, rect, randomColor, CV_FILLED, 0, 0);
+        Mat region = new Mat(image, rect);
+        int kernelWidth = (int) Math.round(rect.size().width() / 2);
+        int kernelHeight = (int) Math.round(rect.size().height()/ 2);
+        Size kernelSize = new Size(kernelWidth, kernelHeight);
+        opencv_imgproc.blur(region, region, kernelSize);
+        //rectangle(image, rect, randomColor, CV_FILLED, 0, 0);
+
     }
 
     public void findSubImageAndRemoveAllOccurences(Path subImagePath) throws ImageMaskerException {
-        List<Rect> list = findAllSubImagePositions(subImagePath);
-        //Need to work using OpenCV native function.
-        IplImage mainImageIpl = new IplImage(image);
-
-        //TODO: Change into pixelization
-        list.stream().forEach((rect) -> {
-            Mat stamp = getResizedStamp(rect);
-            CvRect cvRect = new CvRect(rect.x(), rect.y(), rect.width(), rect.height());
-
-            cvSetImageROI(mainImageIpl, cvRect);
-            cvCopy(new IplImage(stamp), mainImageIpl);
-            cvResetImageROI(mainImageIpl);
-        });
-        Mat removed = new Mat(mainImageIpl);
-        removed.copyTo(image);
+        findAllSubImagePositions(subImagePath);
     }
-    
+
     public Mat getImage() {
         return image;
     }
