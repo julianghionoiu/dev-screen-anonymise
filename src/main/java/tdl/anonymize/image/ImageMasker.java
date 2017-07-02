@@ -34,12 +34,21 @@ public class ImageMasker {
 
     private static final double THRESHOLD = 0.99;
 
-    private final Mat mainImage;
+    private final Mat image;
 
-    public ImageMasker(Path mainImagePath) throws ImageMaskerException {
-        mainImage = imread(mainImagePath.toString());
-        if (mainImage.empty()) {
-            throw new ImageMaskerException("Cannot open image " + mainImagePath.getFileName());
+    public ImageMasker(Path imagePath) throws ImageMaskerException {
+        image = imread(imagePath.toString());
+        throwExceptionIfMainImageIsEmpty();
+    }
+    
+    public ImageMasker(Mat image) throws ImageMaskerException {
+        this.image = image;
+        throwExceptionIfMainImageIsEmpty();
+    }
+    
+    private final void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
+        if (image.empty()) {
+            throw new ImageMaskerException("Cannot open image");
         }
     }
 
@@ -48,7 +57,7 @@ public class ImageMasker {
         if (subImage.empty()) {
             throw new ImageMaskerException("Cannot open image " + subImagePath.getFileName());
         }
-        return findSubImagePositionInMainImage(mainImage, subImage);
+        return findSubImagePositionInMainImage(image, subImage);
     }
 
     public static Rect findSubImagePositionInMainImage(Mat mainImage, Mat subImage) throws ImageMaskerException {
@@ -74,7 +83,7 @@ public class ImageMasker {
     public List<Rect> findAllSubImagePositions(Path subImagePath) throws ImageMaskerException {
         Mat subImage = imread(subImagePath.toString());
         List<Rect> list = new ArrayList<>();
-        Mat searchImage = new Mat(mainImage);
+        Mat searchImage = new Mat(image);
         while (true) {
             try {
                 Rect rect = findSubImagePositionInMainImage(searchImage, subImage);
@@ -98,7 +107,7 @@ public class ImageMasker {
     public void findSubImageAndRemoveAllOccurences(Path subImagePath) throws ImageMaskerException {
         List<Rect> list = findAllSubImagePositions(subImagePath);
         //Need to work using OpenCV native function.
-        IplImage mainImageIpl = new IplImage(mainImage);
+        IplImage mainImageIpl = new IplImage(image);
 
         //TODO: Change into pixelization
         list.stream().forEach((rect) -> {
@@ -110,18 +119,22 @@ public class ImageMasker {
             cvResetImageROI(mainImageIpl);
         });
         Mat removed = new Mat(mainImageIpl);
-        removed.copyTo(mainImage);
+        removed.copyTo(image);
+    }
+    
+    public Mat getImage() {
+        return image;
     }
 
     public void showImage() {
         //For debugging.
-        imshow("Marked", new Mat(mainImage));
+        imshow("Marked", new Mat(image));
         waitKey(0);
         destroyAllWindows();
     }
 
     public void saveImage(Path path) {
-        imwrite(path.toString(), mainImage);
+        imwrite(path.toString(), image);
     }
 
     public static Mat getResizedStamp(Rect rect) {
