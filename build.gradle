@@ -52,6 +52,8 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.16.16'
     compile 'org.bytedeco:javacv-platform:1.3.2'
 
+    testCompile 'io.humble:humble-video-all:'+humbleVideoVersion
+    testCompile 'com.google.zxing:core:3.3.0'
     testCompile('junit:junit:4.11'){
         exclude group: 'org.hamcrest', module: 'hamcrest-core'
     }
@@ -78,6 +80,22 @@ task mavenCapsule(type: MavenCapsule){
         minJavaVersion = '1.8.0'
         dependencyConfiguration configurations.compile
         repositories << 'jcenter'
+
+        //noinspection GroovyAssignabilityCheck
+        platform('windows'){
+            dependencies << 'io.humble:humble-video-arch-x86_64-w64-mingw32:'+humbleVideoVersion
+            dependencies << 'io.humble:humble-video-arch-i686-w64-mingw32:'+humbleVideoVersion
+        }
+        //noinspection GroovyAssignabilityCheck
+        platform('macos'){
+            dependencies << 'io.humble:humble-video-arch-x86_64-apple-darwin12:'+humbleVideoVersion
+            dependencies << 'io.humble:humble-video-arch-i686-apple-darwin12:'+humbleVideoVersion
+        }
+        //noinspection GroovyAssignabilityCheck
+        platform('linux'){
+            dependencies << 'io.humble:humble-video-arch-x86_64-pc-linux-gnu6:'+humbleVideoVersion
+            dependencies << 'io.humble:humble-video-arch-i686-pc-linux-gnu6:'+humbleVideoVersion
+        }
     }
 }
 
@@ -99,5 +117,89 @@ apply plugin: 'com.github.johnrengelman.shadow'
 jar {
     manifest {
         attributes "Main-Class": "$mainClassName"
+    }
+}
+
+//~~~~~ Release management
+
+/**
+ * Prerequisites
+ *    - Create package in Bintray
+ *
+ * Now you can use regular maven upload to push files to you package.
+ * The version will be created automatically
+ *
+ * To push to Maven Central use Bintray sync features:
+ *    - Created request for jcenter ( if missing )
+ *    - Manually sync the two repos
+ *
+ * To publish new version use the Bintray UI:
+ *    - publish current artifacts
+ *    - sync with Maven Central
+ */
+apply plugin: "ch.netzwerg.release"
+apply plugin: 'maven'
+
+release {
+    dependsOn build // 'distZip' could e.g be used in combination with the 'application' plugin
+    push = false // 'true' would e.g. be useful when triggering the release task on a CI server
+    versionSuffix = '-SNAPSHOT' // '.DEV' or '' (empty) could be useful alternatives
+    tagPrefix = 'v' // 'r' or '' (empty) could be useful alternatives
+}
+
+private static String readSystem(String property) {
+    System.getenv(property) != null  ? System.getenv(property) : "unset"
+}
+
+task sourceJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+// Add the sourceJars to non-extractor modules
+artifacts {
+    archives sourceJar
+    archives javadocJar
+}
+
+uploadArchives {
+    repositories.mavenDeployer {
+        name = 'bintray-julianghionoiu-dev-screen-anonymise'
+        repository(id: 'bintray-julianghionoiu-dev-screen-anonymise',
+                url: 'https://api.bintray.com/maven/julianghionoiu/maven/dev-screen-anonymise') {
+            authentication(userName: readSystem("BINTRAY_USER"), password: readSystem("BINTRAY_KEY"))
+        }
+
+        pom.project {
+            name 'Programming Session Recorder'
+            description 'Library designed for anonymising screen recordings.'
+            url 'https://github.com/julianghionoiu/dev-screen-anonymise'
+
+            developers {
+                developer {
+                    name 'Iulian (Julian) Ghionoiu'
+                    email 'iulian.ghionoiu@gmail.com'
+                    organization 'Iulian Ghionoiu'
+                    organizationUrl 'https://github.com/julianghionoiu'
+                }
+            }
+
+            scm {
+                connection 'scm:git:git@github.com:julianghionoiu/dev-screen-anonymise.git'
+                developerConnection 'scm:git:git@github.com:julianghionoiu/dev-screen-anonymise.git'
+                url 'git@github.com:julianghionoiu/dev-screen-anonymise.git'
+            }
+
+            licenses {
+                license {
+                    name 'Apache License, Version 2.0'
+                    url 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                }
+            }
+        }
     }
 }

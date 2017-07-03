@@ -18,8 +18,6 @@ import tdl.anonymize.image.ImageMaskerException;
  * Receives a path to a video and then mask.
  *
  * https://github.com/bytedeco/javacv-examples/blob/e3fc16b3c1da8a284637984c7a813fa1007212a8/OpenCV2_Cookbook/src/main/scala/opencv2_cookbook/chapter11/VideoProcessor.scala
- *
- * @author Petra Barus <petra.barus@gmail.com>
  */
 @Slf4j
 public class VideoMasker {
