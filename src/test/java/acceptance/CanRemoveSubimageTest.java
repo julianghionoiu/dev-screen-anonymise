@@ -1,6 +1,8 @@
 package acceptance;
 
 import com.google.zxing.BarcodeFormat;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
@@ -30,18 +32,23 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import static java.lang.Math.abs;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+import javax.imageio.ImageIO;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import tdl.anonymize.video.VideoMasker;
 
 public class CanRemoveSubimageTest {
 
     @Test
     public void can_remove_subimage() throws Exception {
 
+        //Creating video
         String destinationVideo = "build/recording_from_barcode_at_4x.mp4";
         TimeSource recordTimeSource = new FakeTimeSource();
         ImageInput imageInput = new InputFromStreamOfBarcodes(BarcodeFormat.CODE_39, 300, 150, recordTimeSource);
@@ -52,23 +59,19 @@ public class CanRemoveSubimageTest {
         videoRecorder.start(Duration.of(12, ChronoUnit.SECONDS));
         videoRecorder.close();
 
-        // Read recorded video parameters
-        TimeSource replayTimeSource = new FakeTimeSource();
-        OutputToBarcodeReader barcodeReader = new OutputToBarcodeReader(replayTimeSource, BarcodeFormat.CODE_39);
-        VideoPlayer videoPlayer = new VideoPlayer(barcodeReader, replayTimeSource);
-        videoPlayer.open(destinationVideo);
-        assertThat("Video duration is not as expected", videoPlayer.getDuration(), is(Duration.of(3, ChronoUnit.SECONDS)));
-        assertThat(videoPlayer.getFrameRate(), is(closeTo(20, 0.01)));
-        assertThat(videoPlayer.getWidth(), is(300));
-        assertThat(videoPlayer.getHeight(), is(150));
+        String destinationImage = "build/barcode_subimage.png";
+        recordTimeSource.wakeUpAt(1, TimeUnit.SECONDS);
+        BufferedImage bufferedImage = imageInput.readImage();
+        File outputFile = new File(destinationImage);
+        ImageIO.write(bufferedImage, "png", outputFile);
 
-        // Play the recorded video and read the barcodes
-        videoPlayer.play();
-        videoPlayer.close();
+        String maskedDestination = "build/recording_from_barcode_at_4x.masked.mp4";
 
-        // Assert on timestamps
-        List<OutputToBarcodeReader.TimestampPair> decodedBarcodes = barcodeReader.getDecodedBarcodes();
-        assertThat(decodedBarcodes.isEmpty(), is(false));
-        assertThat(decodedBarcodes, areConsistentWith(4));
+        VideoMasker masker = new VideoMasker(
+                Paths.get(destinationVideo),
+                Paths.get(maskedDestination),
+                Arrays.asList(new Path[]{Paths.get(destinationImage)})
+        );
+        masker.run();
     }
 }
