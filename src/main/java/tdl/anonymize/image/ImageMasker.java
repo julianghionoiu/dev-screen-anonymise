@@ -33,7 +33,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.resize;
 
 public class ImageMasker {
 
-    private static final double THRESHOLD = 0.99;
+    private static final double THRESHOLD = 0.98;
 
     private final Mat image;
 
