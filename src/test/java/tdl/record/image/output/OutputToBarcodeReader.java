@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 public class OutputToBarcodeReader implements ImageOutput {
+
     private final TimeSource timeSource;
     private final List<TimestampPair> decodedBarcodes;
     private final BarcodeFormat barcodeFormat;
@@ -37,9 +38,10 @@ public class OutputToBarcodeReader implements ImageOutput {
 
         try {
             long barcodeTimeNano = Long.parseLong(decodeBarcode(image, barcodeFormat));
+            //System.out.println("Added barcode: " + systemTimeNano + " " + barcodeTimeNano);
             decodedBarcodes.add(new TimestampPair(systemTimeNano, barcodeTimeNano));
         } catch (IOException | NotFoundException | FormatException e) {
-            System.err.println("Could not extract barcode at: "+systemTimeNano);
+            System.err.println("Could not extract barcode at: " + systemTimeNano);
         }
     }
 
@@ -53,6 +55,7 @@ public class OutputToBarcodeReader implements ImageOutput {
     }
 
     public static class TimestampPair {
+
         public final Long systemTimestamp;
         public final Long barcodeTimestamp;
 
@@ -64,9 +67,11 @@ public class OutputToBarcodeReader implements ImageOutput {
 
     private static String decodeBarcode(BufferedImage image, final BarcodeFormat format)
             throws IOException, NotFoundException, FormatException {
-        ArrayList<BarcodeFormat> barcodeFormats = new ArrayList<BarcodeFormat>() {{
-            add(format);
-        }};
+        ArrayList<BarcodeFormat> barcodeFormats = new ArrayList<BarcodeFormat>() {
+            {
+                add(format);
+            }
+        };
         Map<DecodeHintType, Object> hints = new EnumMap<>(DecodeHintType.class);
         hints.put(DecodeHintType.PURE_BARCODE, Boolean.TRUE);
         hints.put(DecodeHintType.POSSIBLE_FORMATS, barcodeFormats);
