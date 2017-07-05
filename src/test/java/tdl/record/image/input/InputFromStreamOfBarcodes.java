@@ -9,6 +9,8 @@ import tdl.record.time.TimeSource;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -98,13 +100,30 @@ public class InputFromStreamOfBarcodes implements ImageInput {
             image = new BufferedImage(width, totalHeight, BufferedImage.TYPE_3BYTE_BGR);
             g2d = image.createGraphics();
             this.textHeight = textHeight;
-            g2d.setFont(new Font("Serif", Font.BOLD, this.textHeight - 10));
+
+            g2d.setFont(getStandardFontFromResources());
             fm = g2d.getFontMetrics();
 
             RenderingHints rh = new RenderingHints(
                     RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2d.setRenderingHints(rh);
+        }
+
+        private Font getStandardFontFromResources() {
+            InputStream is = this.getClass().getResourceAsStream("/barcode_title.ttf");
+            Font font = null;
+            if (is != null) {
+                try {
+                    font = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont((long)this.textHeight - 10);
+                    int size = font.getSize();
+                    System.out.println("size = " + size);
+                } catch (FontFormatException | IOException e) {
+                    throw new IllegalArgumentException("Could not find font in Classpath");
+                }
+            }
+
+            return font;
         }
 
         BufferedImage renderToImage(BitMatrix matrix, String text) {
