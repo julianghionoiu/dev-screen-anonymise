@@ -9,6 +9,7 @@ import static org.bytedeco.javacpp.opencv_core.CV_8UC1;
 import org.bytedeco.javacpp.opencv_core.CvRect;
 import org.bytedeco.javacpp.opencv_core.IplImage;
 import org.bytedeco.javacpp.opencv_core.Mat;
+import static org.bytedeco.javacpp.opencv_core.NORM_MINMAX;
 import org.bytedeco.javacpp.opencv_core.Point;
 import org.bytedeco.javacpp.opencv_core.Rect;
 import org.bytedeco.javacpp.opencv_core.Scalar;
@@ -17,6 +18,7 @@ import static org.bytedeco.javacpp.opencv_core.cvCopy;
 import static org.bytedeco.javacpp.opencv_core.cvResetImageROI;
 import static org.bytedeco.javacpp.opencv_core.cvSetImageROI;
 import static org.bytedeco.javacpp.opencv_core.minMaxLoc;
+import static org.bytedeco.javacpp.opencv_core.normalize;
 import static org.bytedeco.javacpp.opencv_highgui.destroyAllWindows;
 import static org.bytedeco.javacpp.opencv_highgui.imshow;
 import static org.bytedeco.javacpp.opencv_highgui.waitKey;
@@ -25,15 +27,18 @@ import static org.bytedeco.javacpp.opencv_imgcodecs.imwrite;
 import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2GRAY;
 import static org.bytedeco.javacpp.opencv_imgproc.CV_FILLED;
+import static org.bytedeco.javacpp.opencv_imgproc.THRESH_TOZERO;
+import static org.bytedeco.javacpp.opencv_imgproc.TM_CCOEFF_NORMED;
 import static org.bytedeco.javacpp.opencv_imgproc.TM_CCORR_NORMED;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.matchTemplate;
 import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
 import static org.bytedeco.javacpp.opencv_imgproc.resize;
+import static org.bytedeco.javacpp.opencv_imgproc.threshold;
 
 public class ImageMasker {
 
-    private static final double THRESHOLD = 0.98;
+    private static final double THRESHOLD = 0.95;
 
     private final Mat image;
 
@@ -68,13 +73,16 @@ public class ImageMasker {
         cvtColor(subImage, subImageGrey, COLOR_BGR2GRAY);
         Size size = new Size(mainImageGrey.cols() - subImageGrey.cols() + 1, mainImageGrey.rows() - subImageGrey.rows() + 1);
         Mat result = new Mat(size, CV_32FC1);
-        matchTemplate(mainImageGrey, subImageGrey, result, TM_CCORR_NORMED);
+        matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
+        threshold(result, result, 0.1, 1, THRESH_TOZERO);
+        //normalize(result, result, 0, 1, NORM_MINMAX, -1, new Mat());
         DoublePointer minVal = new DoublePointer(1);
         DoublePointer maxVal = new DoublePointer(1);
         Point min = new Point();
         Point max = new Point();
         minMaxLoc(result, minVal, maxVal, min, max, null);
         double val = maxVal.get();
+        //System.out.println("Val: " + minVal.get() + " " + maxVal.get());
         if (val < THRESHOLD) {
             throw new ImageMaskerException("Cannot find sub image");
         }
@@ -103,10 +111,11 @@ public class ImageMasker {
     private static void removeRegionFromImage(Mat image, Rect rect) {
         Mat region = new Mat(image, rect);
         int kernelWidth = (int) Math.round(rect.size().width() / 2);
-        int kernelHeight = (int) Math.round(rect.size().height()/ 2);
+        int kernelHeight = (int) Math.round(rect.size().height() / 2);
         Size kernelSize = new Size(kernelWidth, kernelHeight);
         opencv_imgproc.blur(region, region, kernelSize);
-        //rectangle(image, rect, randomColor, CV_FILLED, 0, 0);
+//        Scalar randomColor = new Scalar(255, 0, 0, 0);
+//        rectangle(image, rect, randomColor, CV_FILLED, 0, 0);
 
     }
 

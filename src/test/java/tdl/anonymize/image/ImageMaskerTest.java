@@ -14,8 +14,8 @@ public class ImageMaskerTest {
 
     @Test
     public void findSubImageAndRemoveAllOccurencesShouldSucceed() throws ImageMaskerException {
-        Path mainImagePath = Paths.get("./src/test/resources/images/main-image-2.jpg");
-        Path subImagePath = Paths.get("./src/test/resources/images/subimage-1.jpg");
+        Path mainImagePath = Paths.get("./src/test/resources/images/barcode-image.png");
+        Path subImagePath = Paths.get("./src/test/resources/images/qrcode-subimage-1.png");
         ImageMasker matcher = new ImageMasker(mainImagePath);
         matcher.findSubImageAndRemoveAllOccurences(subImagePath);
         //matcher.showImage();
