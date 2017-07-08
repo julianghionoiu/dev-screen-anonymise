@@ -1,7 +1,6 @@
 package tdl.record.image.input;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 
 public interface ImageInput {
 

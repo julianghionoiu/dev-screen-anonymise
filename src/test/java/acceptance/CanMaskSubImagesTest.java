@@ -43,89 +43,20 @@ public class CanMaskSubImagesTest {
 
         List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
                 = getReadedBarcodeFromVideo(destination).stream()
-                        .peek(System.out::println)
                         .filter(CanMaskSubImagesTest::isPayloadOutOfOrder)
                         .collect(Collectors.toList());
         assertThat(tamperedBarcodes.size(), is(0));
     }
-
+    
     @Test
-    public void should_have_one_true_positives_in_one_frame() throws Exception {
-        String destination = "build/recording-masked.1.mp4";
-        Path subImage = Paths.get("src/test/resources/subimage-1.png");
-        VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
-                Paths.get(destination),
-                Collections.singletonList(subImage)
-        );
-        masker.run();
-
-        List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
-                = getReadedBarcodeFromVideo(destination).stream()
-                        .collect(Collectors.toList());
-
-        OutputToBarcodeMatrixReader.TimestampedPayload tamperedFrame = tamperedBarcodes.get(8);
-        long expected = getExpectedPayload(tamperedFrame);
-        assertTrue(tamperedFrame.topLeftPayload.isEmpty());
-        assertTrue(tamperedFrame.topRightPayload.isEmpty());
-        assertTrue(Long.parseLong(tamperedFrame.bottomLeftPayload) == expected);
-        assertTrue(Long.parseLong(tamperedFrame.bottomRightPayload) == expected);
-    }
-
-    @Test
-    public void should_have_multiple_true_positives_in_one_frame_using_one_subimage() throws Exception {
-        String destination = "build/recording-masked.2.mp4";
-        Path subImage = Paths.get("src/test/resources/subimage-2.png");
-        VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
-                Paths.get(destination),
-                Collections.singletonList(subImage)
-        );
-        masker.run();
-
-        List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
-                = getReadedBarcodeFromVideo(destination).stream()
-                        .collect(Collectors.toList());
-
-        OutputToBarcodeMatrixReader.TimestampedPayload tamperedFrame = tamperedBarcodes.get(8);
-        long expected = getExpectedPayload(tamperedFrame);
-        assertTrue(tamperedFrame.bottomLeftPayload.isEmpty());
-        assertTrue(tamperedFrame.topRightPayload.isEmpty());
-        assertTrue(Long.parseLong(tamperedFrame.topLeftPayload) == expected);
-        assertTrue(Long.parseLong(tamperedFrame.bottomRightPayload) == expected);
-    }
-
-    @Test
-    public void should_have_multiple_true_positives_in_one_frame_using_two_subimages() throws Exception {
-        String destination = "build/recording-masked.3.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-2.png");
-        Path subImage2 = Paths.get("src/test/resources/subimage-3.png");
+    public void should_have_multiple_true_positives_in_multiple_frames() throws Exception {
+        String destination = "build/recording-masked.4.mp4";
+        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
                 Arrays.asList(new Path[]{subImage1, subImage2})
-        );
-        masker.run();
-
-        List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
-                = getReadedBarcodeFromVideo(destination).stream()
-                        .collect(Collectors.toList());
-
-        OutputToBarcodeMatrixReader.TimestampedPayload tamperedFrame = tamperedBarcodes.get(8);
-        assertTrue(tamperedFrame.topLeftPayload.isEmpty());
-        assertTrue(tamperedFrame.topRightPayload.isEmpty());
-        assertTrue(tamperedFrame.bottomLeftPayload.isEmpty());
-        assertTrue(tamperedFrame.bottomRightPayload.isEmpty());
-    }
-
-    @Test
-    public void should_have_multiple_true_positives_in_multiple_frames() throws Exception {
-        String destination = "build/recording-masked.4.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-4.png");
-        VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
-                Paths.get(destination),
-                Arrays.asList(new Path[]{subImage1})
         );
         masker.run();
 
@@ -148,7 +79,6 @@ public class CanMaskSubImagesTest {
 
     private static boolean isPayloadConsistent(OutputToBarcodeMatrixReader.TimestampedPayload payload) {
         long expectedPayload = getExpectedPayload(payload);
-        System.out.println(expectedPayload);
         try {
             return (Long.parseLong(payload.topLeftPayload) == expectedPayload)
                     && (Long.parseLong(payload.topRightPayload) == expectedPayload)

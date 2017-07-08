@@ -40,7 +40,6 @@ public class VideoMasker {
                 recorder.start();
                 Frame frame;
                 ToMat frameConverter = new ToMat();
-                int currentFrame = 0;
                 while ((frame = grabber.grab()) != null) {
                     Mat image = frameConverter.convert(frame);
                     ImageMasker masker = new ImageMasker(image);
