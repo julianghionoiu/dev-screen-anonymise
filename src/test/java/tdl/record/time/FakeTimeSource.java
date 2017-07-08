@@ -3,6 +3,7 @@ package tdl.record.time;
 import java.util.concurrent.TimeUnit;
 
 public class FakeTimeSource implements TimeSource {
+
     private long currentTimeNano;
 
     public FakeTimeSource() {

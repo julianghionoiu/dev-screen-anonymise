@@ -10,6 +10,7 @@ buildscript {
         classpath "org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.8.1"
         classpath 'us.kirchmeier:gradle-capsule-plugin:1.0.2'
         classpath 'ch.netzwerg:gradle-release-plugin:1.2.4'
+        classpath 'com.github.jengelman.gradle.plugins:shadow:1.2.4'
     }
 }
 
@@ -44,10 +45,12 @@ ext {
 
 dependencies {
     compile 'io.humble:humble-video-noarch:'+humbleVideoVersion
-    compile 'com.beust:jcommander:1.64'
+    compile 'com.beust:jcommander:1.72'
 
     compile 'org.slf4j:slf4j-api:1.7.25'
     compile 'ch.qos.logback:logback-classic:1.1.3'
+    compile 'org.bytedeco:javacv-platform:1.3.2'
+
     compileOnly 'org.projectlombok:lombok:1.16.16'
 
     testCompile 'io.humble:humble-video-all:'+humbleVideoVersion
@@ -64,7 +67,7 @@ dependencies {
 
 apply plugin: 'us.kirchmeier.capsule'
 
-mainClassName = "tdl.record.ScreenRecorderCliApp"
+mainClassName = "tdl.anonymize.AnonymizeApp"
 jar {
     manifest {
         attributes "Main-Class": "$mainClassName"
@@ -77,6 +80,7 @@ task mavenCapsule(type: MavenCapsule){
     capsuleManifest {
         minJavaVersion = '1.8.0'
         dependencyConfiguration configurations.compile
+        repositories << 'jcenter'
 
         //noinspection GroovyAssignabilityCheck
         platform('windows'){
@@ -108,8 +112,16 @@ jacocoTestReport {
     }
 }
 
-//~~~~~ Release management
+// ~~~~~ Dependency too big, just package from the start.
 
+apply plugin: 'com.github.johnrengelman.shadow'
+jar {
+    manifest {
+        attributes "Main-Class": "$mainClassName"
+    }
+}
+
+//~~~~~ Release management
 
 /**
  * Prerequisites
