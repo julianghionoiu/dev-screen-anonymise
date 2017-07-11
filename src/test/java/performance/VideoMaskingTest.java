@@ -50,12 +50,19 @@ public class VideoMaskingTest {
         double ratio1 = calculateRatio(duration1, baseline);
         System.out.printf("%f\n", ratio1);
         
-        startTimer("run_with_two_masking");
-        runWithTwoMasking();
-        long duration2 = endTimer("run_with_two_masking");
+        startTimer("run_with_two_maskings");
+        runWithTwoMaskings();
+        long duration2 = endTimer("run_with_two_maskings");
 
         double ratio2 = calculateRatio(duration2, baseline);
         System.out.printf("%f\n", ratio2);
+        
+        startTimer("run_with_three_maskings");
+        runWithThreeMaskings();
+        long duration3 = endTimer("run_with_three_maskings");
+
+        double ratio3 = calculateRatio(duration3, baseline);
+        System.out.printf("%f\n", ratio3);
     }
 
     private void runWithoutMasking() throws Exception {
@@ -79,7 +86,7 @@ public class VideoMaskingTest {
         masker.run();
     }
     
-    private void runWithTwoMasking() throws Exception {
+    private void runWithTwoMaskings() throws Exception {
         String destination = "build/recording-masked.perftest-2.mp4";
         Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
         Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
@@ -87,6 +94,19 @@ public class VideoMaskingTest {
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
                 Arrays.asList(new Path[]{subImage1, subImage2})
+        );
+        masker.run();
+    }
+    
+    private void runWithThreeMaskings() throws Exception {
+        String destination = "build/recording-masked.perftest-3.mp4";
+        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
+        Path subImage3 = Paths.get("src/test/resources/subimage-3.png");
+        VideoMasker masker = new VideoMasker(
+                Paths.get(VIDEO_INPUT_PATH),
+                Paths.get(destination),
+                Arrays.asList(new Path[]{subImage1, subImage2, subImage3})
         );
         masker.run();
     }
