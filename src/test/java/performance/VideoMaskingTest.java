@@ -40,32 +40,30 @@ public class VideoMaskingTest {
     @Test
     public void run() throws Exception {
         startTimer("run_without_masking");
-        runWithoutMasking();
+        int count0 = runWithoutMasking();
         long baseline = endTimer("run_without_masking");
 
         startTimer("run_with_one_masking");
-        runWithOneMasking();
+        int count1 = runWithOneMasking();
         long duration1 = endTimer("run_with_one_masking");
 
-        double ratio1 = calculateRatio(duration1, baseline);
-        System.out.printf("%f\n", ratio1);
-        
         startTimer("run_with_two_maskings");
-        runWithTwoMaskings();
+        int count2 = runWithTwoMaskings();
         long duration2 = endTimer("run_with_two_maskings");
-
-        double ratio2 = calculateRatio(duration2, baseline);
-        System.out.printf("%f\n", ratio2);
         
         startTimer("run_with_three_maskings");
-        runWithThreeMaskings();
+        int count3 = runWithThreeMaskings();
         long duration3 = endTimer("run_with_three_maskings");
 
+        double ratio1 = calculateRatio(duration1, baseline);
+        System.out.printf("%d %f\n", count1, ratio1);
+        double ratio2 = calculateRatio(duration2, baseline);
+        System.out.printf("%d %f\n", count2, ratio2);
         double ratio3 = calculateRatio(duration3, baseline);
-        System.out.printf("%f\n", ratio3);
+        System.out.printf("%d %f\n", count3, ratio3);
     }
 
-    private void runWithoutMasking() throws Exception {
+    private int runWithoutMasking() throws Exception {
         String destination = "build/recording-masked.perftest-1.mp4";
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
@@ -73,9 +71,10 @@ public class VideoMaskingTest {
                 Arrays.asList(new Path[]{})
         );
         masker.run();
+        return masker.getCount();
     }
 
-    private void runWithOneMasking() throws Exception {
+    private int runWithOneMasking() throws Exception {
         String destination = "build/recording-masked.perftest-2.mp4";
         Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
         VideoMasker masker = new VideoMasker(
@@ -84,9 +83,10 @@ public class VideoMaskingTest {
                 Arrays.asList(new Path[]{subImage1})
         );
         masker.run();
+        return masker.getCount();
     }
     
-    private void runWithTwoMaskings() throws Exception {
+    private int runWithTwoMaskings() throws Exception {
         String destination = "build/recording-masked.perftest-2.mp4";
         Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
         Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
@@ -96,9 +96,10 @@ public class VideoMaskingTest {
                 Arrays.asList(new Path[]{subImage1, subImage2})
         );
         masker.run();
+        return masker.getCount();
     }
     
-    private void runWithThreeMaskings() throws Exception {
+    private int runWithThreeMaskings() throws Exception {
         String destination = "build/recording-masked.perftest-3.mp4";
         Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
         Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
@@ -109,5 +110,6 @@ public class VideoMaskingTest {
                 Arrays.asList(new Path[]{subImage1, subImage2, subImage3})
         );
         masker.run();
+        return masker.getCount();
     }
 }

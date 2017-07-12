@@ -41,6 +41,8 @@ public class ImageMasker {
     private static final double THRESHOLD = 0.96;
 
     private final Mat image;
+    
+    private int counter = 0;
 
     public ImageMasker(Path imagePath) throws ImageMaskerException {
         image = imread(imagePath.toString());
@@ -97,6 +99,7 @@ public class ImageMasker {
             try {
                 Rect rect = findSubImagePositionInMainImage(searchImage, subImage);
                 removeRegionFromImage(searchImage, rect);
+                counter += 1;
                 list.add(rect);
             } catch (ImageMaskerException e) {
                 break;
@@ -106,6 +109,10 @@ public class ImageMasker {
             throw new ImageMaskerException("Cannot find any occurences");
         }
         return list;
+    }
+    
+    public int getCount() {
+        return counter;
     }
 
     private static void removeRegionFromImage(Mat image, Rect rect) {
