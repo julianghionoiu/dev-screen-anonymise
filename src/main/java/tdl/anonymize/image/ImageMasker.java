@@ -36,12 +36,12 @@ import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
 import static org.bytedeco.javacpp.opencv_imgproc.resize;
 import static org.bytedeco.javacpp.opencv_imgproc.threshold;
 
-public class ImageMasker {
+public class ImageMasker implements AutoCloseable {
 
     private static final double THRESHOLD = 0.96;
 
     private final Mat image;
-    
+
     private int counter = 0;
 
     public ImageMasker(Path imagePath) throws ImageMaskerException {
@@ -69,65 +69,61 @@ public class ImageMasker {
     }
 
     public static Rect findSubImagePositionInMainImage(Mat mainImage, Mat subImage) throws ImageMaskerException {
-        Mat mainImageGrey = new Mat(mainImage.size(), CV_8UC1);
-        Mat subImageGrey = new Mat(subImage.size(), CV_8UC1);
-        cvtColor(mainImage, mainImageGrey, COLOR_BGR2GRAY);
-        cvtColor(subImage, subImageGrey, COLOR_BGR2GRAY);
-        Size size = new Size(mainImageGrey.cols() - subImageGrey.cols() + 1, mainImageGrey.rows() - subImageGrey.rows() + 1);
-        Mat result = new Mat(size, CV_32FC1);
-        matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
-        threshold(result, result, 0.1, 1, THRESH_TOZERO);
-        //normalize(result, result, 0, 1, NORM_MINMAX, -1, new Mat());
-        DoublePointer minVal = new DoublePointer(1);
-        DoublePointer maxVal = new DoublePointer(1);
-        Point min = new Point();
-        Point max = new Point();
-        minMaxLoc(result, minVal, maxVal, min, max, null);
-        double val = maxVal.get();
-        //System.out.println("Val: " + minVal.get() + " " + maxVal.get());
-        if (val < THRESHOLD) {
-            throw new ImageMaskerException("Cannot find sub image");
-        }
-        return new Rect(max.x(), max.y(), subImageGrey.cols(), subImageGrey.rows());
-    }
+        try (Mat mainImageGrey = new Mat(mainImage.size(), CV_8UC1);
+                Mat subImageGrey = new Mat(subImage.size(), CV_8UC1);) {
 
-    public List<Rect> findAllSubImagePositions(Path subImagePath) throws ImageMaskerException {
-        Mat subImage = imread(subImagePath.toString());
-        List<Rect> list = new ArrayList<>();
-        Mat searchImage = new Mat(image);
-        while (true) {
-            try {
-                Rect rect = findSubImagePositionInMainImage(searchImage, subImage);
-                removeRegionFromImage(searchImage, rect);
-                counter += 1;
-                list.add(rect);
-            } catch (ImageMaskerException e) {
-                break;
+            cvtColor(mainImage, mainImageGrey, COLOR_BGR2GRAY);
+            cvtColor(subImage, subImageGrey, COLOR_BGR2GRAY);
+            Size size = new Size(mainImageGrey.cols() - subImageGrey.cols() + 1, mainImageGrey.rows() - subImageGrey.rows() + 1);
+            try (Mat result = new Mat(size, CV_32FC1)) {
+                matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
+                threshold(result, result, 0.1, 1, THRESH_TOZERO);
+                //normalize(result, result, 0, 1, NORM_MINMAX, -1, new Mat());
+                try (
+                        DoublePointer minVal = new DoublePointer(1);
+                        DoublePointer maxVal = new DoublePointer(1);
+                        Point min = new Point();
+                        Point max = new Point();) {
+
+                    minMaxLoc(result, minVal, maxVal, min, max, null);
+                    double val = maxVal.get();
+                    //System.out.println("Val: " + minVal.get() + " " + maxVal.get());
+                    if (val < THRESHOLD) {
+                        throw new ImageMaskerException("Cannot find sub image");
+                    }
+
+                    return new Rect(max.x(), max.y(), subImageGrey.cols(), subImageGrey.rows());
+                }
             }
         }
-        if (list.isEmpty()) {
-            throw new ImageMaskerException("Cannot find any occurences");
-        }
-        return list;
     }
-    
+
     public int getCount() {
         return counter;
     }
 
     private static void removeRegionFromImage(Mat image, Rect rect) {
-        Mat region = new Mat(image, rect);
         int kernelWidth = (int) Math.round(rect.size().width() / 2);
         int kernelHeight = (int) Math.round(rect.size().height() / 2);
-        Size kernelSize = new Size(kernelWidth, kernelHeight);
-        opencv_imgproc.blur(region, region, kernelSize);
-//        Scalar randomColor = new Scalar(255, 0, 0, 0);
-//        rectangle(image, rect, randomColor, CV_FILLED, 0, 0);
-
+        try (Mat region = new Mat(image, rect);
+                Size kernelSize = new Size(kernelWidth, kernelHeight);) {
+            opencv_imgproc.blur(region, region, kernelSize);
+        }
     }
 
     public void findSubImageAndRemoveAllOccurences(Path subImagePath) throws ImageMaskerException {
-        findAllSubImagePositions(subImagePath);
+        try (
+                Mat subImage = imread(subImagePath.toString());
+                Mat searchImage = new Mat(image);) {
+            while (true) {
+                try (Rect rect = findSubImagePositionInMainImage(searchImage, subImage);) {
+                    removeRegionFromImage(searchImage, rect);
+                    counter += 1;
+                } catch (ImageMaskerException e) {
+                    break;
+                }
+            }
+        }
     }
 
     public Mat getImage() {
@@ -150,5 +146,10 @@ public class ImageMasker {
         Mat stamp = imread("src/main/resources/pixelated_stamp.jpg");
         resize(stamp, stamp, rect.size());
         return stamp;
+    }
+
+    @Override
+    public void close() throws Exception {
+        image.close();
     }
 }

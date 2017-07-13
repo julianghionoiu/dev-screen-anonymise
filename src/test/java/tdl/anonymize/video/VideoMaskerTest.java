@@ -12,7 +12,7 @@ import tdl.anonymize.image.ImageMaskerException;
 public class VideoMaskerTest {
 
     @Test
-    public void test() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
+    public void test() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception, Exception {
         Path inputPath = Paths.get("./src/test/resources/video/sample-recording.mp4");
         Path outputPath = Paths.get("./output.mp4");
         Path subImagePath = Paths.get("./src/test/resources/video/subimage-2.png");

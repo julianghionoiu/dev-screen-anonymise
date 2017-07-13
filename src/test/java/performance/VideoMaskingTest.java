@@ -51,16 +51,16 @@ public class VideoMaskingTest {
         int count2 = runWithTwoMaskings();
         long duration2 = endTimer("run_with_two_maskings");
 //        
-//        startTimer("run_with_three_maskings");
-//        int count3 = runWithThreeMaskings();
-//        long duration3 = endTimer("run_with_three_maskings");
+        startTimer("run_with_three_maskings");
+        int count3 = runWithThreeMaskings();
+        long duration3 = endTimer("run_with_three_maskings");
 
         double ratio1 = calculateRatio(duration1, baseline);
         System.out.printf("%d %f\n", count1, ratio1);
         double ratio2 = calculateRatio(duration2, baseline);
         System.out.printf("%d %f\n", count2, ratio2);
-//        double ratio3 = calculateRatio(duration3, baseline);
-//        System.out.printf("%d %f\n", count3, ratio3);
+        double ratio3 = calculateRatio(duration3, baseline);
+        System.out.printf("%d %f\n", count3, ratio3);
     }
 
     private int runWithoutMasking() throws Exception {
@@ -85,7 +85,7 @@ public class VideoMaskingTest {
         masker.run();
         return masker.getCount();
     }
-    
+
     private int runWithTwoMaskings() throws Exception {
         String destination = "build/real-recording.masked.2.mp4";
         Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
@@ -98,7 +98,7 @@ public class VideoMaskingTest {
         masker.run();
         return masker.getCount();
     }
-    
+
     private int runWithThreeMaskings() throws Exception {
         String destination = "build/real-recording.masked.3.mp4";
         Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
