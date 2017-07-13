@@ -19,7 +19,7 @@ import tdl.record.image.output.OutputToBarcodeMatrixReader;
 
 public class VideoMaskingTest {
 
-    private static final String VIDEO_INPUT_PATH = GenerateInputWithMatrixOfBarcodes.OUTPUT_PATH;
+    private static final String VIDEO_INPUT_PATH = "./src/test/resources/real-recording.mp4";
 
     private static Map<String, Long> timer = new HashMap<>();
 
@@ -50,21 +50,21 @@ public class VideoMaskingTest {
         startTimer("run_with_two_maskings");
         int count2 = runWithTwoMaskings();
         long duration2 = endTimer("run_with_two_maskings");
-        
-        startTimer("run_with_three_maskings");
-        int count3 = runWithThreeMaskings();
-        long duration3 = endTimer("run_with_three_maskings");
+//        
+//        startTimer("run_with_three_maskings");
+//        int count3 = runWithThreeMaskings();
+//        long duration3 = endTimer("run_with_three_maskings");
 
         double ratio1 = calculateRatio(duration1, baseline);
         System.out.printf("%d %f\n", count1, ratio1);
         double ratio2 = calculateRatio(duration2, baseline);
         System.out.printf("%d %f\n", count2, ratio2);
-        double ratio3 = calculateRatio(duration3, baseline);
-        System.out.printf("%d %f\n", count3, ratio3);
+//        double ratio3 = calculateRatio(duration3, baseline);
+//        System.out.printf("%d %f\n", count3, ratio3);
     }
 
     private int runWithoutMasking() throws Exception {
-        String destination = "build/recording-masked.perftest-1.mp4";
+        String destination = "build/real-recording.masked.1.mp4";
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
@@ -75,8 +75,8 @@ public class VideoMaskingTest {
     }
 
     private int runWithOneMasking() throws Exception {
-        String destination = "build/recording-masked.perftest-2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
+        String destination = "build/real-recording.masked.2.mp4";
+        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
@@ -87,9 +87,9 @@ public class VideoMaskingTest {
     }
     
     private int runWithTwoMaskings() throws Exception {
-        String destination = "build/recording-masked.perftest-2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
+        String destination = "build/real-recording.masked.2.mp4";
+        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/real-recording-subimage-2.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
@@ -100,10 +100,10 @@ public class VideoMaskingTest {
     }
     
     private int runWithThreeMaskings() throws Exception {
-        String destination = "build/recording-masked.perftest-3.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
-        Path subImage3 = Paths.get("src/test/resources/subimage-3.png");
+        String destination = "build/real-recording.masked.3.mp4";
+        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/real-recording-subimage-2.png");
+        Path subImage3 = Paths.get("src/test/resources/real-recording-subimage-3.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
