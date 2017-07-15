@@ -26,6 +26,8 @@ public class VideoMasker {
     private final Path outputPath;
     private final List<Path> subImagePaths;
 
+    private int counter = 0;
+
     //TODO: Wrap frame grabber exception
     public VideoMasker(Path inputPath, Path outputPath, List<Path> subImagePaths) {
         this.inputPath = inputPath;
@@ -40,12 +42,15 @@ public class VideoMasker {
                 recorder.start();
                 Frame frame;
                 ToMat frameConverter = new ToMat();
+//                int frameIdx = 0;
                 while ((frame = grabber.grab()) != null) {
                     Mat image = frameConverter.convert(frame);
+//                    System.out.println("Frame : " + (++frameIdx));
                     ImageMasker masker = new ImageMasker(image);
                     subImagePaths.stream().forEach((subImage) -> {
                         try {
                             masker.findSubImageAndRemoveAllOccurences(subImage);
+                            counter += masker.getCount();
                         } catch (ImageMaskerException ex) {
                             //Do nothing
                         }
@@ -57,6 +62,10 @@ public class VideoMasker {
                 }
             }
         }
+    }
+
+    public int getCount() {
+        return counter;
     }
 
     private FFmpegFrameGrabber createGrabber() {

@@ -26,7 +26,7 @@ public class AnonymizeApp {
     @Parameter(names = {"-o", "--output"}, description = "The path to the recording file")
     public String destinationPath = "./output.mp4";
 
-    public static void main(String[] args) throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception {
+    public static void main(String[] args) throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception, Exception {
         AnonymizeApp main = new AnonymizeApp();
         JCommander.newBuilder()
                 .addObject(main)
@@ -35,7 +35,7 @@ public class AnonymizeApp {
         main.run();
     }
 
-    public void run() throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception {
+    public void run() throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception, Exception {
         if (paths.size() < 2) {
             throw new RuntimeException("Parameter has to be at least 2");
         }
