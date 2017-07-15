@@ -42,23 +42,11 @@ public class VideoMaskingTest {
         startTimer("run_without_masking");
         int count0 = runWithoutMasking();
         long baseline = endTimer("run_without_masking");
-
-        startTimer("run_with_one_masking");
-        int count1 = runWithOneMasking();
-        long duration1 = endTimer("run_with_one_masking");
-
-        startTimer("run_with_two_maskings");
-        int count2 = runWithTwoMaskings();
-        long duration2 = endTimer("run_with_two_maskings");
 //        
         startTimer("run_with_three_maskings");
         int count3 = runWithThreeMaskings();
         long duration3 = endTimer("run_with_three_maskings");
 
-        double ratio1 = calculateRatio(duration1, baseline);
-        System.out.printf("%d %f\n", count1, ratio1);
-        double ratio2 = calculateRatio(duration2, baseline);
-        System.out.printf("%d %f\n", count2, ratio2);
         double ratio3 = calculateRatio(duration3, baseline);
         System.out.printf("%d %f\n", count3, ratio3);
     }
@@ -69,31 +57,6 @@ public class VideoMaskingTest {
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
                 Arrays.asList(new Path[]{})
-        );
-        masker.run();
-        return masker.getCount();
-    }
-
-    private int runWithOneMasking() throws Exception {
-        String destination = "build/real-recording.masked.2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
-        VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
-                Paths.get(destination),
-                Arrays.asList(new Path[]{subImage1})
-        );
-        masker.run();
-        return masker.getCount();
-    }
-
-    private int runWithTwoMaskings() throws Exception {
-        String destination = "build/real-recording.masked.2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/real-recording-subimage-2.png");
-        VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
-                Paths.get(destination),
-                Arrays.asList(new Path[]{subImage1, subImage2})
         );
         masker.run();
         return masker.getCount();
