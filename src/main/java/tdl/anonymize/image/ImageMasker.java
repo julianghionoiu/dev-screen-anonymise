@@ -89,14 +89,18 @@ public class ImageMasker implements AutoCloseable {
                 }
                 Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
 
-                int kernelWidth = (int) Math.round(rect.size().width() / 2);
-                int kernelHeight = (int) Math.round(rect.size().height() / 2);
-                try (Mat region = new Mat(searchImage, rect);
-                        Size kernelSize = new Size(kernelWidth, kernelHeight)) {
-                    opencv_imgproc.blur(region, region, kernelSize);
-                }
+                blurImage(searchImage, rect);
                 rectangle(result, rect, new Scalar(0, 0, 0, 0));
             }
+        }
+    }
+
+    private static void blurImage(Mat searchImage, Rect rect) {
+        int kernelWidth = (int) Math.round(rect.size().width() / 2);
+        int kernelHeight = (int) Math.round(rect.size().height() / 2);
+        try (Mat region = new Mat(searchImage, rect);
+                Size kernelSize = new Size(kernelWidth, kernelHeight)) {
+            opencv_imgproc.blur(region, region, kernelSize);
         }
     }
 

@@ -18,6 +18,6 @@ public class ImageMaskerTest {
         Path subImagePath = Paths.get("./src/test/resources/images/qrcode-subimage-1.png");
         ImageMasker matcher = new ImageMasker(mainImagePath);
         matcher.removeAllOccurences(subImagePath);
-        matcher.showImage();
+        //matcher.showImage();
     }
 }
