@@ -17,16 +17,7 @@ public class ImageMaskerTest {
         Path mainImagePath = Paths.get("./src/test/resources/images/barcode-image.png");
         Path subImagePath = Paths.get("./src/test/resources/images/qrcode-subimage-1.png");
         ImageMasker matcher = new ImageMasker(mainImagePath);
-        matcher.findSubImageAndRemoveAllOccurences(subImagePath);
+        matcher.removeAllOccurences(subImagePath);
         //matcher.showImage();
-    }
-
-    @Test
-    public void findSubImagePositionShouldThrowExceptionIfImageNotFound() throws ImageMaskerException {
-        expectedException.expect(ImageMaskerException.class);
-        Path mainImagePath = Paths.get("./src/test/resources/images/main-image-2.jpg");
-        Path subImagePath = Paths.get("./src/test/resources/images/subimage-1-larger.jpg");
-        ImageMasker matcher = new ImageMasker(mainImagePath);
-        matcher.findSubImagePosition(subImagePath);
     }
 }

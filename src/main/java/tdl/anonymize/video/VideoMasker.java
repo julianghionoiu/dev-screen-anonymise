@@ -49,7 +49,7 @@ public class VideoMasker {
                     ImageMasker masker = new ImageMasker(image);
                     subImagePaths.stream().forEach((subImage) -> {
                         try {
-                            masker.findSubImageAndRemoveAllOccurences(subImage);
+                            masker.removeAllOccurences(subImage);
                             counter += masker.getCount();
                         } catch (ImageMaskerException ex) {
                             //Do nothing
