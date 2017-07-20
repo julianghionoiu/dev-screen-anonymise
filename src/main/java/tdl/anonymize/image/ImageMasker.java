@@ -1,80 +1,76 @@
 package tdl.anonymize.image;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import org.bytedeco.javacpp.DoublePointer;
-import static org.bytedeco.javacpp.opencv_core.CV_32FC1;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC1;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.Point;
 import org.bytedeco.javacpp.opencv_core.Rect;
 import org.bytedeco.javacpp.opencv_core.Scalar;
 import org.bytedeco.javacpp.opencv_core.Size;
-import static org.bytedeco.javacpp.opencv_core.minMaxLoc;
-import static org.bytedeco.javacpp.opencv_highgui.destroyAllWindows;
-import static org.bytedeco.javacpp.opencv_highgui.imshow;
-import static org.bytedeco.javacpp.opencv_highgui.waitKey;
-import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
-import static org.bytedeco.javacpp.opencv_imgcodecs.imwrite;
 import org.bytedeco.javacpp.opencv_imgproc;
+import static org.bytedeco.javacpp.opencv_core.CV_32FC1;
+import static org.bytedeco.javacpp.opencv_core.CV_8UC1;
+import static org.bytedeco.javacpp.opencv_core.minMaxLoc;
+import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2GRAY;
 import static org.bytedeco.javacpp.opencv_imgproc.THRESH_TOZERO;
 import static org.bytedeco.javacpp.opencv_imgproc.TM_CCOEFF_NORMED;
 import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
 import static org.bytedeco.javacpp.opencv_imgproc.matchTemplate;
 import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
-import static org.bytedeco.javacpp.opencv_imgproc.resize;
 import static org.bytedeco.javacpp.opencv_imgproc.threshold;
 
 public class ImageMasker implements AutoCloseable {
 
     private static final double THRESHOLD = 0.96;
 
-    private final Mat image;
+    private final Mat subImage;
+
+    private final Mat subImageGrey;
 
     private int counter = 0;
 
-    public ImageMasker(Path imagePath) throws ImageMaskerException {
-        image = imread(imagePath.toString());
-        throwExceptionIfMainImageIsEmpty();
+    public ImageMasker(Path subImagePath) throws ImageMaskerException {
+        this(imread(subImagePath.toString()));
     }
 
-    public ImageMasker(Mat image) throws ImageMaskerException {
-        this.image = image;
+    public ImageMasker(Mat subImage) throws ImageMaskerException {
+        this.subImage = subImage;
         throwExceptionIfMainImageIsEmpty();
+        this.subImageGrey = createGreyImage(subImage);
     }
 
-    private final void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
-        if (image.empty()) {
+    private void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
+        if (subImage.empty()) {
             throw new ImageMaskerException("Cannot open image");
         }
     }
 
-    public int getCount() {
-        return counter;
+    private Mat createGreyImage(Mat image) {
+        Mat grey = new Mat(image.size(), CV_8UC1);
+        cvtColor(image, grey, COLOR_BGR2GRAY);
+        return grey;
     }
 
-    public void removeAllOccurences(Path subImagePath) throws ImageMaskerException {
-        try (
-                Mat subImage = imread(subImagePath.toString());
-                Mat searchImage = new Mat(image);
-                Mat mainImageGrey = new Mat(searchImage.size(), CV_8UC1);
-                Mat subImageGrey = new Mat(subImage.size(), CV_8UC1)) {
+    public void mask(Mat mainImage) {
+        counter = 0;
+        try (Mat mainImageGrey = createGreyImage(mainImage)) {
 
-            cvtColor(searchImage, mainImageGrey, COLOR_BGR2GRAY);
-            cvtColor(subImage, subImageGrey, COLOR_BGR2GRAY);
-            Size size = new Size(mainImageGrey.cols() - subImageGrey.cols() + 1, mainImageGrey.rows() - subImageGrey.rows() + 1);
+            Size size = new Size(
+                    mainImageGrey.cols() - subImageGrey.cols() + 1,
+                    mainImageGrey.rows() - subImageGrey.rows() + 1
+            );
 
             try (Mat result = new Mat(size, CV_32FC1)) {
                 matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
                 threshold(result, result, 0.1, 1, THRESH_TOZERO);
-
-                removeAllMatchTemplateResult(result, subImage, searchImage);
+                counter += removeAllMatchTemplateResult(result, subImage, mainImage);
             }
         }
     }
 
-    private void removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
+    private int removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
+        int count = 0;
         try (
                 DoublePointer minVal = new DoublePointer(1);
                 DoublePointer maxVal = new DoublePointer(1);
@@ -88,11 +84,12 @@ public class ImageMasker implements AutoCloseable {
                     break;
                 }
                 Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
-
                 blurImage(searchImage, rect);
                 rectangle(result, rect, new Scalar(0, 0, 0, 0));
+                count++;
             }
         }
+        return count;
     }
 
     private static void blurImage(Mat searchImage, Rect rect) {
@@ -105,29 +102,16 @@ public class ImageMasker implements AutoCloseable {
     }
 
     public Mat getImage() {
-        return image;
+        return subImage;
     }
 
-    public void showImage() {
-        //For debugging.
-        imshow("Marked", new Mat(image));
-        waitKey(0);
-        destroyAllWindows();
-    }
-
-    public void saveImage(Path path) {
-        imwrite(path.toString(), image);
-    }
-
-    public static Mat getResizedStamp(Rect rect) {
-        //TODO: Read from resource
-        Mat stamp = imread("src/main/resources/pixelated_stamp.jpg");
-        resize(stamp, stamp, rect.size());
-        return stamp;
+    public int getCount() {
+        return counter;
     }
 
     @Override
     public void close() throws Exception {
-        image.close();
+        subImage.close();
+        subImageGrey.close();
     }
 }

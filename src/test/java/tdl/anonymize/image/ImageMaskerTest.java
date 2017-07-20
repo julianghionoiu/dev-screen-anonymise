@@ -5,7 +5,11 @@ import java.nio.file.Paths;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import tdl.anonymize.image.ImageMaskerException;
+import org.bytedeco.javacpp.opencv_core.Mat;
+import static org.bytedeco.javacpp.opencv_highgui.destroyAllWindows;
+import static org.bytedeco.javacpp.opencv_highgui.imshow;
+import static org.bytedeco.javacpp.opencv_highgui.waitKey;
+import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 
 public class ImageMaskerTest {
 
@@ -16,8 +20,13 @@ public class ImageMaskerTest {
     public void findSubImageAndRemoveAllOccurencesShouldSucceed() throws ImageMaskerException {
         Path mainImagePath = Paths.get("./src/test/resources/images/barcode-image.png");
         Path subImagePath = Paths.get("./src/test/resources/images/qrcode-subimage-1.png");
-        ImageMasker matcher = new ImageMasker(mainImagePath);
-        matcher.removeAllOccurences(subImagePath);
+        ImageMasker matcher = new ImageMasker(subImagePath);
+        Mat mainImage = imread(mainImagePath.toString());
+        matcher.mask(mainImage);
         //matcher.showImage();
+//        imshow("Marked", mainImage);
+//        waitKey(0);
+//        destroyAllWindows();
     }
+
 }
