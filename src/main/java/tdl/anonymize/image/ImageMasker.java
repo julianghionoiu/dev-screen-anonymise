@@ -1,7 +1,13 @@
 package tdl.anonymize.image;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.bytedeco.javacpp.DoublePointer;
+import org.bytedeco.javacpp.indexer.IntRawIndexer;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_core.Point;
 import org.bytedeco.javacpp.opencv_core.Rect;
@@ -11,6 +17,10 @@ import org.bytedeco.javacpp.opencv_imgproc;
 import static org.bytedeco.javacpp.opencv_core.CV_32FC1;
 import static org.bytedeco.javacpp.opencv_core.CV_8UC1;
 import static org.bytedeco.javacpp.opencv_core.minMaxLoc;
+import static org.bytedeco.javacpp.opencv_core.findNonZero;
+import static org.bytedeco.javacpp.opencv_highgui.destroyAllWindows;
+import static org.bytedeco.javacpp.opencv_highgui.imshow;
+import static org.bytedeco.javacpp.opencv_highgui.waitKey;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
 import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2GRAY;
 import static org.bytedeco.javacpp.opencv_imgproc.THRESH_TOZERO;
@@ -61,35 +71,75 @@ public class ImageMasker implements AutoCloseable {
                     mainImageGrey.rows() - subImageGrey.rows() + 1
             );
 
-            try (Mat result = new Mat(size, CV_32FC1)) {
+            try (Mat result = new Mat(size, CV_32FC1);
+                    Mat result2 = new Mat(size, CV_8UC1)) {
                 matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
-                threshold(result, result, 0.1, 1, THRESH_TOZERO);
-                counter += removeAllMatchTemplateResult(result, subImage, mainImage);
+
+                result.convertTo(result2, CV_8UC1);
+
+                threshold(result2, result2, THRESHOLD, 1, THRESH_TOZERO);
+
+                Mat locationMat = new Mat();
+                findNonZero(result2, locationMat);
+                System.out.println(clusterIntegers(collectSimilarIndicesFromMat(locationMat), 3));
+                System.exit(1);
+
+                try (
+                        DoublePointer minVal = new DoublePointer(1);
+                        DoublePointer maxVal = new DoublePointer(1);
+                        Point min = new Point();
+                        Point max = new Point()) {
+
+                    minMaxLoc(result, minVal, maxVal, min, max, null);
+                    double val = maxVal.get();
+                    Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
+                    blurImage(mainImage, rect);
+                    rectangle(result, rect, new Scalar(0, 0, 0, 0));
+                    imshow("Marked", mainImage);
+                    waitKey(0);
+                    destroyAllWindows();
+                }
             }
         }
     }
 
-    private int removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
-        int count = 0;
-        try (
-                DoublePointer minVal = new DoublePointer(1);
-                DoublePointer maxVal = new DoublePointer(1);
-                Point min = new Point();
-                Point max = new Point()) {
-
-            while (true) {
-                minMaxLoc(result, minVal, maxVal, min, max, null);
-                double val = maxVal.get();
-                if (val < THRESHOLD) {
-                    break;
-                }
-                Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
-                blurImage(searchImage, rect);
-                rectangle(result, rect, new Scalar(0, 0, 0, 0));
-                count++;
+    public static List<Integer> collectSimilarIndicesFromMat(Mat mat) {
+        IntRawIndexer indexer = mat.createIndexer();
+        ArrayList<Integer> list = new ArrayList<>();
+        for (int y = 0; y < mat.rows(); y++) {
+            for (int x = 0; x < mat.cols(); x++) {
+                list.add(new Integer(indexer.get(y, x, 0)));
             }
         }
-        return count;
+        Set<Integer> uniq = new TreeSet<>();
+        uniq.addAll(list);
+        return new ArrayList(uniq);
+    }
+
+    public static List<Integer> clusterIntegers(List<Integer> numbers, int maxRange) {
+        Integer previous = 0;
+        List<Integer> averages = new ArrayList<>();
+        List<Integer> currentList = new ArrayList<>();
+        for (Integer number : numbers) {
+            if (number - previous > maxRange) {
+                Integer average = average(currentList);
+                averages.add(average);
+                currentList.clear();
+            }
+            currentList.add(number);
+            previous = number;
+        }
+        Integer average = average(currentList);
+        averages.add(average);
+        return averages.stream().filter(i -> i > 0).collect(Collectors.toList());
+    }
+
+    public static Integer average(List<Integer> numbers) {
+        if (numbers.isEmpty()) {
+            return 0;
+        }
+        Integer sum = numbers.stream().mapToInt(Integer::intValue).sum();
+        return (new Double(Math.ceil((double) sum / numbers.size()))).intValue();
     }
 
     private static void blurImage(Mat searchImage, Rect rect) {
