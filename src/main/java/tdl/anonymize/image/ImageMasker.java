@@ -28,14 +28,8 @@ public class ImageMasker implements AutoCloseable {
 
     private final Mat subImageGrey;
 
-    private int counter = 0;
-
     public ImageMasker(Path subImagePath) throws ImageMaskerException {
-        this(imread(subImagePath.toString()));
-    }
-
-    public ImageMasker(Mat subImage) throws ImageMaskerException {
-        this.subImage = subImage;
+        this.subImage = imread(subImagePath.toString());
         throwExceptionIfMainImageIsEmpty();
         this.subImageGrey = createGreyImage(subImage);
     }
@@ -53,7 +47,6 @@ public class ImageMasker implements AutoCloseable {
     }
 
     public void mask(Mat mainImage) {
-        counter = 0;
         try (Mat mainImageGrey = createGreyImage(mainImage)) {
 
             Size size = new Size(
@@ -64,12 +57,12 @@ public class ImageMasker implements AutoCloseable {
             try (Mat result = new Mat(size, CV_32FC1)) {
                 matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
                 threshold(result, result, 0.1, 1, THRESH_TOZERO);
-                counter += removeAllMatchTemplateResult(result, subImage, mainImage);
+                removeAllMatchTemplateResult(result, subImage, mainImage);
             }
         }
     }
 
-    private int removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
+    private void removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
         int count = 0;
         try (
                 DoublePointer minVal = new DoublePointer(1);
@@ -89,12 +82,11 @@ public class ImageMasker implements AutoCloseable {
                 count++;
             }
         }
-        return count;
     }
 
     private static void blurImage(Mat searchImage, Rect rect) {
-        int kernelWidth = (int) Math.round(rect.size().width() / 2);
-        int kernelHeight = (int) Math.round(rect.size().height() / 2);
+        int kernelWidth = Math.round(rect.size().width() / 2);
+        int kernelHeight = Math.round(rect.size().height() / 2);
         try (Mat region = new Mat(searchImage, rect);
                 Size kernelSize = new Size(kernelWidth, kernelHeight)) {
             opencv_imgproc.blur(region, region, kernelSize);
@@ -103,10 +95,6 @@ public class ImageMasker implements AutoCloseable {
 
     public Mat getImage() {
         return subImage;
-    }
-
-    public int getCount() {
-        return counter;
     }
 
     @Override

@@ -28,8 +28,6 @@ public class VideoMasker implements AutoCloseable {
     private final Path outputPath;
     private final List<ImageMasker> subImageMaskers;
 
-    private int counter = 0;
-
     //TODO: Wrap frame grabber exception
     public VideoMasker(Path inputPath, Path outputPath, List<Path> subImagePaths) {
         this.inputPath = inputPath;
@@ -50,11 +48,26 @@ public class VideoMasker implements AutoCloseable {
             grabber.start();
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
-                Frame frame;
-                while ((frame = grabber.grab()) != null) {
-                    Frame editedFrame = maskFrame(frame);
-                    recorder.setTimestamp(grabber.getTimestamp());
-                    recorder.record(editedFrame);
+                Frame firstFrame;
+                while ((firstFrame = grabber.grab()) != null) {
+                    long firstTimestamp = grabber.getTimestamp();
+                    Frame secondFrame = grabber.grab();
+                    long secondTimestamp = grabber.getTimestamp();
+                    Frame thirdFrame = grabber.grab();
+                    long thirdTimestamp = grabber.getTimestamp();
+
+                    Frame editedThirdFrame = maskFrame(thirdFrame);
+                    Frame editedSecondFrame = maskFrame(secondFrame);
+                    Frame editedFirstFrame = maskFrame(firstFrame);
+
+                    recorder.setTimestamp(firstTimestamp);
+                    recorder.record(editedFirstFrame);
+
+                    recorder.setTimestamp(secondTimestamp);
+                    recorder.record(editedSecondFrame);
+
+                    recorder.setTimestamp(thirdTimestamp);
+                    recorder.record(editedThirdFrame);
                 }
             }
         }
@@ -66,9 +79,7 @@ public class VideoMasker implements AutoCloseable {
         long timeBefore = System.nanoTime();
         
         Mat image = FRAME_CONVERTER.convert(frame);
-        subImageMaskers.forEach((masker) -> {
-            masker.mask(image);
-        });
+        subImageMaskers.forEach((masker) -> masker.mask(image));
         Frame editedFrame = FRAME_CONVERTER.convert(image);
         
         long timeAfter = System.nanoTime();
@@ -76,9 +87,6 @@ public class VideoMasker implements AutoCloseable {
         return editedFrame;
     }
 
-    public int getCount() {
-        return counter;
-    }
 
     private FFmpegFrameGrabber createGrabber() {
         return new FFmpegFrameGrabber(inputPath.toFile());
@@ -102,7 +110,7 @@ public class VideoMasker implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        this.subImageMaskers.stream().forEach((masker) -> {
+        this.subImageMaskers.forEach((masker) -> {
             try {
                 masker.close();
             } catch (Exception ex) {
