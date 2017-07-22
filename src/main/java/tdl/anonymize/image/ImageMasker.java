@@ -81,39 +81,48 @@ public class ImageMasker implements AutoCloseable {
 
                 Mat locationMat = new Mat();
                 findNonZero(result2, locationMat);
-                System.out.println(clusterIntegers(collectSimilarIndicesFromMat(locationMat), 3));
-                System.exit(1);
+                List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
+                int maxDistance = Math.min(subImage.cols(), subImage.rows());
+                List<Point> clusteredPoints = clusterPoints(similarPoints, maxDistance);
 
-                try (
-                        DoublePointer minVal = new DoublePointer(1);
-                        DoublePointer maxVal = new DoublePointer(1);
-                        Point min = new Point();
-                        Point max = new Point()) {
-
-                    minMaxLoc(result, minVal, maxVal, min, max, null);
-                    double val = maxVal.get();
-                    Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
+                clusteredPoints.stream().forEach((point) -> {
+                    Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
                     blurImage(mainImage, rect);
                     rectangle(result, rect, new Scalar(0, 0, 0, 0));
-                    imshow("Marked", mainImage);
-                    waitKey(0);
-                    destroyAllWindows();
-                }
+                });
             }
         }
     }
 
-    public static List<Integer> collectSimilarIndicesFromMat(Mat mat) {
+    public static List<Point> collectSimilarPointsFromMat(Mat mat) {
         IntRawIndexer indexer = mat.createIndexer();
-        ArrayList<Integer> list = new ArrayList<>();
+        List<Point> list = new ArrayList<>();
         for (int y = 0; y < mat.rows(); y++) {
             for (int x = 0; x < mat.cols(); x++) {
-                list.add(new Integer(indexer.get(y, x, 0)));
+                int pointX = indexer.get(x, y, 0);
+                int pointY = indexer.get(x, y, 1);
+                list.add(new Point(pointX, pointY));
             }
         }
-        Set<Integer> uniq = new TreeSet<>();
-        uniq.addAll(list);
-        return new ArrayList(uniq);
+        return list;
+    }
+
+    public static List<Point> clusterPoints(List<Point> list, int maxDistance) {
+        Point previous = list.get(0);
+        List<Point> clustered = new ArrayList<>();
+        clustered.add(previous);
+        for (Point point : list) {
+            int distance = euclideanDistance(previous, point);
+            if (distance > maxDistance) {
+                clustered.add(point);
+            }
+            previous = point;
+        }
+        return clustered;
+    }
+
+    public static int euclideanDistance(Point p1, Point p2) {
+        return (new Double(Math.sqrt(Math.pow(p1.x() - p2.x(), 2) + Math.pow(p1.y() - p2.y(), 2)))).intValue();
     }
 
     public static List<Integer> clusterIntegers(List<Integer> numbers, int maxRange) {
