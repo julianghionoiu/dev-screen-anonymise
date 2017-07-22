@@ -82,9 +82,12 @@ public class ImageMasker implements AutoCloseable {
                 Mat locationMat = new Mat();
                 findNonZero(result2, locationMat);
                 List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
+                if (similarPoints.isEmpty()) {
+                    return;
+                }
+                
                 int maxDistance = Math.min(subImage.cols(), subImage.rows());
                 List<Point> clusteredPoints = clusterPoints(similarPoints, maxDistance);
-
                 clusteredPoints.stream().forEach((point) -> {
                     Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
                     blurImage(mainImage, rect);
@@ -95,16 +98,21 @@ public class ImageMasker implements AutoCloseable {
     }
 
     public static List<Point> collectSimilarPointsFromMat(Mat mat) {
-        IntRawIndexer indexer = mat.createIndexer();
         List<Point> list = new ArrayList<>();
-        for (int y = 0; y < mat.rows(); y++) {
-            for (int x = 0; x < mat.cols(); x++) {
-                int pointX = indexer.get(x, y, 0);
-                int pointY = indexer.get(x, y, 1);
-                list.add(new Point(pointX, pointY));
+        try {
+            IntRawIndexer indexer = mat.createIndexer();
+            for (int y = 0; y < mat.rows(); y++) {
+                for (int x = 0; x < mat.cols(); x++) {
+                    int pointX = indexer.get(x, y, 0);
+                    int pointY = indexer.get(x, y, 1);
+                    list.add(new Point(pointX, pointY));
+                }
             }
+        } catch (NullPointerException ex) {
+            //Do nothing
+        } finally {
+            return list;
         }
-        return list;
     }
 
     public static List<Point> clusterPoints(List<Point> list, int maxDistance) {
