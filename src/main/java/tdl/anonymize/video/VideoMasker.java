@@ -2,6 +2,8 @@ package tdl.anonymize.video;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.opencv_core.Mat;
 import org.bytedeco.javacpp.opencv_videoio;
@@ -20,11 +22,11 @@ import tdl.anonymize.image.ImageMaskerException;
  * https://github.com/bytedeco/javacv-examples/blob/e3fc16b3c1da8a284637984c7a813fa1007212a8/OpenCV2_Cookbook/src/main/scala/opencv2_cookbook/chapter11/VideoProcessor.scala
  */
 @Slf4j
-public class VideoMasker {
+public class VideoMasker implements AutoCloseable {
 
     private final Path inputPath;
     private final Path outputPath;
-    private final List<Path> subImagePaths;
+    private final List<ImageMasker> subImageMaskers;
 
     private int counter = 0;
 
@@ -32,7 +34,15 @@ public class VideoMasker {
     public VideoMasker(Path inputPath, Path outputPath, List<Path> subImagePaths) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
-        this.subImagePaths = subImagePaths;
+        this.subImageMaskers = subImagePaths.stream().map((path) -> {
+            try {
+                return new ImageMasker(path);
+            } catch (ImageMaskerException ex) {
+                return null;
+            }
+        })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
     public void run() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
@@ -41,27 +51,29 @@ public class VideoMasker {
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
                 Frame frame;
-                ToMat frameConverter = new ToMat();
-//                int frameIdx = 0;
                 while ((frame = grabber.grab()) != null) {
-                    Mat image = frameConverter.convert(frame);
-//                    System.out.println("Frame : " + (++frameIdx));
-                    ImageMasker masker = new ImageMasker(image);
-                    subImagePaths.stream().forEach((subImage) -> {
-                        try {
-                            masker.removeAllOccurences(subImage);
-                            counter += masker.getCount();
-                        } catch (ImageMaskerException ex) {
-                            //Do nothing
-                        }
-                    });
-                    Mat editedImage = masker.getImage();
-                    Frame editedFrame = frameConverter.convert(editedImage);
+                    Frame editedFrame = maskFrame(frame);
                     recorder.setTimestamp(grabber.getTimestamp());
                     recorder.record(editedFrame);
                 }
             }
         }
+    }
+
+    private static final ToMat FRAME_CONVERTER = new ToMat();
+
+    private Frame maskFrame(Frame frame) {
+        long timeBefore = System.nanoTime();
+        
+        Mat image = FRAME_CONVERTER.convert(frame);
+        subImageMaskers.forEach((masker) -> {
+            masker.mask(image);
+        });
+        Frame editedFrame = FRAME_CONVERTER.convert(image);
+        
+        long timeAfter = System.nanoTime();
+        System.out.printf("Frame processed in: %d ms\n", ((timeAfter - timeBefore) / 1000000));
+        return editedFrame;
     }
 
     public int getCount() {
@@ -86,6 +98,17 @@ public class VideoMasker {
         recorder.setSampleRate(grabber.getSampleRate());
         recorder.setAudioCodec(grabber.getAudioCodec());
         return recorder;
+    }
+
+    @Override
+    public void close() throws Exception {
+        this.subImageMaskers.stream().forEach((masker) -> {
+            try {
+                masker.close();
+            } catch (Exception ex) {
+                //Do nothing
+            }
+        });
     }
 
 }
