@@ -1,20 +1,17 @@
 package tdl.anonymize.video;
 
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_videoio;
-import org.bytedeco.javacv.FFmpegFrameGrabber;
-import org.bytedeco.javacv.FFmpegFrameRecorder;
-import org.bytedeco.javacv.Frame;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.FrameRecorder;
+import org.bytedeco.javacv.*;
 import org.bytedeco.javacv.OpenCVFrameConverter.ToMat;
 import tdl.anonymize.image.ImageMasker;
 import tdl.anonymize.image.ImageMaskerException;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Receives a path to a video and then mask.
@@ -44,48 +41,67 @@ public class VideoMasker implements AutoCloseable {
     }
 
     public void run() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
-        try (FFmpegFrameGrabber grabber = createGrabber()) {
+        int batchSize = 2;
+        List<Frame> rawFramesBuffer = new ArrayList<>();
+        List<Frame> processedFrameBuffer = new ArrayList<>();
+        try (FFmpegFrameGrabber grabber = createGrabber(); FFmpegFrameGrabber readAheadGrabber = createGrabber()) {
             grabber.start();
+            readAheadGrabber.start();
+            int currentFrameIndex = 0;
+            int totalFrames = grabber.getLengthInFrames();
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
-                Frame firstFrame;
-                while ((firstFrame = grabber.grab()) != null) {
-                    long firstTimestamp = grabber.getTimestamp();
-                    Frame secondFrame = grabber.grab();
-                    long secondTimestamp = grabber.getTimestamp();
-                    Frame thirdFrame = grabber.grab();
-                    long thirdTimestamp = grabber.getTimestamp();
+                while (currentFrameIndex < totalFrames) {
+                    int framesToProcess = Math.min(batchSize, totalFrames - currentFrameIndex);
+                    long timeBefore = System.nanoTime();
 
-                    Frame editedThirdFrame = maskFrame(thirdFrame);
-                    Frame editedSecondFrame = maskFrame(secondFrame);
-                    Frame editedFirstFrame = maskFrame(firstFrame);
+                    rawFramesBuffer.clear();
+                    processedFrameBuffer.clear();
 
-                    recorder.setTimestamp(firstTimestamp);
-                    recorder.record(editedFirstFrame);
+                    if (framesToProcess > 1) {
+                        //Align the grabber
+                        readAheadGrabber.grab();
+                        Frame frame2 = readAheadGrabber.grab();
+                        rawFramesBuffer.add(frame2);
+                    }
 
-                    recorder.setTimestamp(secondTimestamp);
-                    recorder.record(editedSecondFrame);
+                    Frame frame1 = grabber.grab();
+                    rawFramesBuffer.add(frame1);
 
-                    recorder.setTimestamp(thirdTimestamp);
-                    recorder.record(editedThirdFrame);
+
+                    for (Frame frame : rawFramesBuffer) {
+                        Mat mat = FRAME_CONVERTER.convert(frame);
+                        subImageMaskers.forEach((masker) -> masker.mask(mat));
+                        Frame editedFrame = FRAME_CONVERTER.convert(mat);
+                        processedFrameBuffer.add(editedFrame);
+                    }
+
+                    for (int i = 0; i < framesToProcess; i++) {
+                        recorder.record(processedFrameBuffer.get(i));
+                    }
+
+                    currentFrameIndex += framesToProcess;
+
+                    //Align grabbers to new index
+                    while (grabber.getFrameNumber() < currentFrameIndex) {
+                        grabber.grab();
+                    }
+
+                    while (readAheadGrabber.getFrameNumber() < currentFrameIndex) {
+                        readAheadGrabber.grab();
+                    }
+
+
+                    long timeAfter = System.nanoTime();
+                    System.out.printf("Processed %d frames in: %d ms\n", framesToProcess, ((timeAfter - timeBefore) / 1000000));
+
+
                 }
             }
         }
     }
 
     private static final ToMat FRAME_CONVERTER = new ToMat();
-
-    private Frame maskFrame(Frame frame) {
-        long timeBefore = System.nanoTime();
-        
-        Mat image = FRAME_CONVERTER.convert(frame);
-        subImageMaskers.forEach((masker) -> masker.mask(image));
-        Frame editedFrame = FRAME_CONVERTER.convert(image);
-        
-        long timeAfter = System.nanoTime();
-        System.out.printf("Frame processed in: %d ms\n", ((timeAfter - timeBefore) / 1000000));
-        return editedFrame;
-    }
 
 
     private FFmpegFrameGrabber createGrabber() {
