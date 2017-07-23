@@ -17,8 +17,10 @@ public class ImageMasker implements AutoCloseable {
     private static final double THRESHOLD = 0.99;
 
     private final Mat subImage;
+    
+    private final UMat subImageAccld;
 
-    private final Mat subImageGrey;
+    private final UMat subImageGrey;
 
     private int counter = 0;
 
@@ -29,7 +31,8 @@ public class ImageMasker implements AutoCloseable {
     public ImageMasker(Mat subImage) throws ImageMaskerException {
         this.subImage = subImage;
         throwExceptionIfMainImageIsEmpty();
-        this.subImageGrey = createGreyImage(subImage);
+        this.subImageAccld = subImage.getUMat(CV_32FC1);
+        this.subImageGrey = createGreyImage(subImageAccld);
     }
 
     private void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
@@ -38,23 +41,23 @@ public class ImageMasker implements AutoCloseable {
         }
     }
 
-    private Mat createGreyImage(Mat image) {
-        Mat grey = new Mat(image.size(), CV_8UC1);
+    private UMat createGreyImage(UMat image) {
+        UMat grey = new UMat(image.size(), CV_8UC1);
         cvtColor(image, grey, COLOR_BGR2GRAY);
         return grey;
     }
 
-    public void mask(Mat mainImage) {
+    public void mask(UMat mainImage) {
         counter = 0;
-        try (Mat mainImageGrey = createGreyImage(mainImage)) {
+        try (UMat mainImageGrey = createGreyImage(mainImage)) {
 
             Size size = new Size(
                     mainImageGrey.cols() - subImageGrey.cols() + 1,
                     mainImageGrey.rows() - subImageGrey.rows() + 1
             );
 
-            try (Mat match_result = new Mat(size, CV_32FC1);
-                    Mat threshold_result = new Mat(size, CV_8UC1)) {
+            try (UMat match_result = new UMat(size, CV_32FC1);
+                    UMat threshold_result = new UMat(size, CV_8UC1)) {
 
                 matchTemplate(mainImageGrey, subImageGrey, match_result, TM_CCOEFF_NORMED);
 //                imwrite("build/after_match.png", multiply(match_result, 255).asMat());
@@ -64,7 +67,7 @@ public class ImageMasker implements AutoCloseable {
 
                 match_result.convertTo(threshold_result, CV_8UC1);
 
-                Mat locationMat = new Mat();
+                UMat locationMat = new UMat();
                 findNonZero(threshold_result, locationMat);
                 List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
                 if (similarPoints.isEmpty()) {
@@ -76,16 +79,18 @@ public class ImageMasker implements AutoCloseable {
                 clusteredPoints.stream().forEach((point) -> {
                     Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
                     blurImage(mainImage, rect);
-                    rectangle(match_result, rect, new Scalar(0, 0, 0, 0));
+                    Point point2 = new Point(point.x() + subImage.cols(), point.y() + subImage.rows());
+                    rectangle(match_result, point, point2, AbstractScalar.BLACK);
                 });
             }
         }
     }
 
-    public static List<Point> collectSimilarPointsFromMat(Mat mat) {
+    public static List<Point> collectSimilarPointsFromMat(UMat mat) {
+        Mat toIndexMat = mat.getMat(CV_8UC1);
         List<Point> list = new ArrayList<>();
         try {
-            IntRawIndexer indexer = mat.createIndexer();
+            IntRawIndexer indexer = toIndexMat.createIndexer();
             for (int y = 0; y < mat.rows(); y++) {
                 for (int x = 0; x < mat.cols(); x++) {
                     int pointX = indexer.get(x, y, 0);
@@ -118,10 +123,10 @@ public class ImageMasker implements AutoCloseable {
         return (new Double(Math.sqrt(Math.pow(p1.x() - p2.x(), 2) + Math.pow(p1.y() - p2.y(), 2)))).intValue();
     }
 
-    private static void blurImage(Mat searchImage, Rect rect) {
+    private static void blurImage(UMat searchImage, Rect rect) {
         int kernelWidth = (int) Math.round(rect.size().width() / 2);
         int kernelHeight = (int) Math.round(rect.size().height() / 2);
-        try (Mat region = new Mat(searchImage, rect);
+        try (UMat region = new UMat(searchImage, rect);
                 Size kernelSize = new Size(kernelWidth, kernelHeight)) {
             opencv_imgproc.blur(region, region, kernelSize);
         }

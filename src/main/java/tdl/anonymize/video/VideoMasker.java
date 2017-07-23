@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import static org.bytedeco.javacpp.opencv_core.CV_32FC1;
 import org.bytedeco.javacpp.opencv_core.Mat;
+import org.bytedeco.javacpp.opencv_core.UMat;
 import org.bytedeco.javacpp.opencv_videoio;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
@@ -66,10 +68,11 @@ public class VideoMasker implements AutoCloseable {
         long timeBefore = System.nanoTime();
         
         Mat image = FRAME_CONVERTER.convert(frame);
+        UMat imageAccld = image.getUMat(CV_32FC1);
         subImageMaskers.forEach((masker) -> {
-            masker.mask(image);
+            masker.mask(imageAccld);
         });
-        Frame editedFrame = FRAME_CONVERTER.convert(image);
+        Frame editedFrame = FRAME_CONVERTER.convert(imageAccld.getMat(CV_32FC1));
         
         long timeAfter = System.nanoTime();
         System.out.printf("Frame processed in: %d ms\n", ((timeAfter - timeBefore) / 1000000));
