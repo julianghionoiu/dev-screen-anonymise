@@ -21,15 +21,11 @@ public class ImageMasker implements AutoCloseable {
     private final Mat subImageGrey;
 
     public ImageMasker(Path subImagePath) throws ImageMaskerException {
-        this.subImage = imread(subImagePath.toString());
-        throwExceptionIfMainImageIsEmpty();
-        this.subImageGrey = createGreyImage(subImage);
-    }
-
-    private void throwExceptionIfMainImageIsEmpty() throws ImageMaskerException {
+        this.subImage = imread(subImagePath.toAbsolutePath().toString());
         if (subImage.empty()) {
             throw new ImageMaskerException("Cannot open image");
         }
+        this.subImageGrey = createGreyImage(subImage);
     }
 
     private Mat createGreyImage(Mat image) {

@@ -101,11 +101,14 @@ public class VideoMasker implements AutoCloseable {
     private ProcessedFrame processFrame(Frame frame, List<ImageMasker> subImageMaskers) throws FrameGrabber.Exception {
         Set<ImageMasker> matchedMaskers = new HashSet<>();
         Mat mat = FRAME_CONVERTER.convert(frame);
-        for (ImageMasker masker : subImageMaskers) {
-            int matches = masker.mask(mat);
 
-            if (matches > 0) {
-                matchedMaskers.add(masker);
+        if (mat != null) {
+            for (ImageMasker masker : subImageMaskers) {
+                int matches = masker.mask(mat);
+
+                if (matches > 0) {
+                    matchedMaskers.add(masker);
+                }
             }
         }
 
