@@ -8,7 +8,6 @@ import tdl.anonymize.image.ImageMasker;
 import tdl.anonymize.image.ImageMaskerException;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -46,47 +45,48 @@ public class VideoMasker implements AutoCloseable {
             readAheadGrabber.start();
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
-                int readAheadStep = 2;
+                int readAheadStep = 3;
                 int currentFrameIndex = 0;
                 int totalFrames = grabber.getLengthInFrames();
 
                 while (currentFrameIndex < totalFrames) {
-                    int framesToProcess = Math.min(readAheadStep, totalFrames - currentFrameIndex);
+                    int framesToReadAhead = Math.min(readAheadStep, totalFrames - currentFrameIndex);
+                    int normalFramesToRead = framesToReadAhead - 1;
+
                     long timeBefore = System.nanoTime();
 
-                    Frame readAheadFrame;
-                    {
+                    //Skip the normal frames
+                    for (int i = 0; i < normalFramesToRead; i++) {
                         readAheadGrabber.grab();
-                        Frame frm = readAheadGrabber.grab();
-                        Mat mat = FRAME_CONVERTER.convert(frm);
-                        subImageMaskers.forEach((masker) -> masker.mask(mat));
-                        readAheadFrame = FRAME_CONVERTER.convert(mat);
+                    }
+                    Frame editedReadAheadFrame = processFrame(readAheadGrabber.grab());
+
+                    for (int i = 0; i < normalFramesToRead; i++) {
+                        Frame editedNormalFrame = processFrame(grabber.grab());
+                        recorder.record(editedNormalFrame);
+                        currentFrameIndex += 1;
                     }
 
-                    {
-                        Frame frame = grabber.grab();
-                        Mat mat = FRAME_CONVERTER.convert(frame);
-                        subImageMaskers.forEach((masker) -> masker.mask(mat));
-                        Frame editedFrame = FRAME_CONVERTER.convert(mat);
-                        recorder.record(editedFrame);
-                    }
+                    recorder.record(editedReadAheadFrame);
+                    currentFrameIndex += 1;
 
-                    recorder.record(readAheadFrame);
-
-                    currentFrameIndex += framesToProcess;
-
-                    //Align grabbers
-                    if (framesToProcess > 1) {
-                        grabber.grab();
-                    }
+                    //Align the normal grabbers
+                    grabber.grab();
 
 
                     long timeAfter = System.nanoTime();
                     long durationMs = (timeAfter - timeBefore) / 1000000;
-                    System.out.printf("Processing speed: %d ms per frame\n", durationMs/framesToProcess);
+                    System.out.printf("Processing speed: %d ms per frame\n", durationMs/framesToReadAhead);
                 }
             }
         }
+    }
+
+    private Frame processFrame(Frame frame) throws FrameGrabber.Exception {
+        Frame editedFrame;Mat mat = FRAME_CONVERTER.convert(frame);
+        subImageMaskers.forEach((masker) -> masker.mask(mat));
+        editedFrame = FRAME_CONVERTER.convert(mat);
+        return editedFrame;
     }
 
     private static final ToMat FRAME_CONVERTER = new ToMat();
