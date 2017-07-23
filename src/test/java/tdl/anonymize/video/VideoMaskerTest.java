@@ -1,18 +1,15 @@
 package tdl.anonymize.video;
 
+import org.junit.Test;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.List;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.FrameRecorder;
-import org.junit.Test;
-import tdl.anonymize.image.ImageMaskerException;
 
 public class VideoMaskerTest {
 
     @Test
-    public void test() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception, Exception {
+    public void test() throws Exception {
         Path inputPath = Paths.get("./src/test/resources/video/sample-recording.mp4");
         Path outputPath = Paths.get("./output.mp4");
         Path subImagePath = Paths.get("./src/test/resources/video/subimage-2.png");
@@ -22,6 +19,6 @@ public class VideoMaskerTest {
                 outputPath,
                 Arrays.asList(subImagesPath)
         );
-        masker.run();
+        masker.run(3);
     }
 }

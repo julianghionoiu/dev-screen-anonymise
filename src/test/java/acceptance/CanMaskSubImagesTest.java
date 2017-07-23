@@ -39,7 +39,7 @@ public class CanMaskSubImagesTest {
                 Paths.get(destination),
                 Collections.singletonList(subImage)
         );
-        masker.run();
+        masker.run(1);
 
         List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
                 = getReadedBarcodeFromVideo(destination).stream()
@@ -58,7 +58,7 @@ public class CanMaskSubImagesTest {
                 Paths.get(destination),
                 Arrays.asList(subImage1, subImage2)
         );
-        masker.run();
+        masker.run(1);
 
         List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
                 = getReadedBarcodeFromVideo(destination).stream()

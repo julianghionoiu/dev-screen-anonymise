@@ -14,7 +14,7 @@ import static org.bytedeco.javacpp.opencv_imgproc.*;
 
 public class ImageMasker implements AutoCloseable {
 
-    private static final double THRESHOLD = 0.99;
+    private static final double THRESHOLD = 0.98;
 
     private final Mat subImage;
 
@@ -38,7 +38,8 @@ public class ImageMasker implements AutoCloseable {
         return grey;
     }
 
-    public void mask(Mat mainImage) {
+    public int mask(Mat mainImage) {
+        int totalMatches = 0;
         try (Mat mainImageGrey = createGreyImage(mainImage)) {
 
             Size size = new Size(
@@ -61,11 +62,12 @@ public class ImageMasker implements AutoCloseable {
                 findNonZero(threshold_result, locationMat);
                 List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
                 if (similarPoints.isEmpty()) {
-                    return;
+                    return totalMatches;
                 }
 
                 int maxDistance = Math.min(subImage.cols(), subImage.rows());
                 List<Point> clusteredPoints = clusterPoints(similarPoints, maxDistance);
+                totalMatches = clusteredPoints.size();
                 clusteredPoints.forEach((point) -> {
                     Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
                     blurImage(mainImage, rect);
@@ -73,6 +75,7 @@ public class ImageMasker implements AutoCloseable {
                 });
             }
         }
+        return totalMatches;
     }
 
     private static List<Point> collectSimilarPointsFromMat(Mat mat) {

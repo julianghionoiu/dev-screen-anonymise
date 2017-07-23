@@ -48,9 +48,14 @@ public class VideoMaskingTest {
                 Paths.get(destination),
                 Arrays.asList(new Path[]{})
         );
-        masker.run();
+        masker.run(3);
     }
 
+    /**
+     * To generate the images run:
+     *  ffmpeg -i real-recording.mp4 -ss 00:00:14.000 -vframes 1 screen.png
+     *
+     */
     private void runWithThreeMaskings() throws Exception {
         String destination = "build/real-recording.masked.2.mp4";
         Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
@@ -61,6 +66,6 @@ public class VideoMaskingTest {
                 Paths.get(destination),
                 Arrays.asList(subImage1, subImage2, subImage3)
         );
-        masker.run();
+        masker.run(3);
     }
 }
