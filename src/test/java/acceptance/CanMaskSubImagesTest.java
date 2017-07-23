@@ -56,7 +56,7 @@ public class CanMaskSubImagesTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
-                Arrays.asList(new Path[]{subImage1, subImage2})
+                Arrays.asList(subImage1, subImage2)
         );
         masker.run();
 
@@ -65,6 +65,21 @@ public class CanMaskSubImagesTest {
                         .filter(CanMaskSubImagesTest::isPayloadOutOfOrder)
                         .collect(Collectors.toList());
         assertThat(tamperedBarcodes.size(), is(2));
+        assertDecodedBarcode(tamperedBarcodes.get(0),
+                7L, "", "1200", "1200", "");
+        assertDecodedBarcode(tamperedBarcodes.get(1),
+                9L, "", "", "", "");
+
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private void assertDecodedBarcode(OutputToBarcodeMatrixReader.TimestampedPayload frame, long timestamp,
+                                      String topLeft, String topRight, String bottomLeft, String bottomRight) {
+        assertThat(frame.videoTimestamp, is(timestamp));
+        assertThat(frame.topLeftPayload, is(topLeft));
+        assertThat(frame.topRightPayload, is(topRight));
+        assertThat(frame.bottomLeftPayload, is(bottomLeft));
+        assertThat(frame.bottomRightPayload, is(bottomRight));
     }
 
     //~~~~~~~~~~ Helpers
