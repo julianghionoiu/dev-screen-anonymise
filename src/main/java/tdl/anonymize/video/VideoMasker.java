@@ -49,10 +49,11 @@ public class VideoMasker implements AutoCloseable {
                 int currentFrameIndex = 0;
                 int totalFrames = grabber.getLengthInFrames();
                 List<ImageMasker> activeImageMaskers = new ArrayList<>();
+
+                // Start with no triggered matchers and no previous matching points
                 ProcessedFrame previousReadAheadFrame = new ProcessedFrame(null, new HashMap<>());
                 HashMap<ImageMasker, List<opencv_core.Point>> reusableMatches = new HashMap<>();
 
-                // All matchers are false
 
                 while (currentFrameIndex < totalFrames) {
                     int framesToReadAhead = Math.min(readAheadStep, totalFrames - currentFrameIndex);

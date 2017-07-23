@@ -30,7 +30,9 @@ public class ImageMasker implements AutoCloseable {
         }
 
         // Create the grey image used for matching
-        this.subImageGrey = createGreyImage(subImage);
+        Mat grey = new Mat(subImage.size(), CV_8UC1);
+        cvtColor(subImage, grey, COLOR_BGR2GRAY);
+        this.subImageGrey = grey;
 
         // Create the blurred image used for replacing
         this.blurredSubImage = imread(subImagePath.toString());
@@ -44,15 +46,11 @@ public class ImageMasker implements AutoCloseable {
         return name;
     }
 
-    private Mat createGreyImage(Mat image) {
-        Mat grey = new Mat(image.size(), CV_8UC1);
-        cvtColor(image, grey, COLOR_BGR2GRAY);
-        return grey;
-    }
-
     public List<Point> findMatchingPoints(Mat mainImage) {
         List<Point> matchedPoints = new ArrayList<>();
-        try (Mat mainImageGrey = createGreyImage(mainImage)) {
+        Mat grey = new Mat(mainImage.size(), CV_8UC1);
+        cvtColor(mainImage, grey, COLOR_BGR2GRAY);
+        try (Mat mainImageGrey = grey) {
 
             Size size = new Size(
                     mainImageGrey.cols() - subImageGrey.cols() + 1,
@@ -131,10 +129,6 @@ public class ImageMasker implements AutoCloseable {
 
     private static int euclideanDistance(Point p1, Point p2) {
         return (new Double(Math.sqrt(Math.pow(p1.x() - p2.x(), 2) + Math.pow(p1.y() - p2.y(), 2)))).intValue();
-    }
-
-    public Mat getImage() {
-        return subImage;
     }
 
     @Override
