@@ -1,28 +1,20 @@
 package tdl.anonymize.image;
 
-import java.nio.file.Path;
-import org.bytedeco.javacpp.DoublePointer;
-import org.bytedeco.javacpp.opencv_core.Mat;
-import org.bytedeco.javacpp.opencv_core.Point;
-import org.bytedeco.javacpp.opencv_core.Rect;
-import org.bytedeco.javacpp.opencv_core.Scalar;
-import org.bytedeco.javacpp.opencv_core.Size;
+import org.bytedeco.javacpp.indexer.IntRawIndexer;
+import org.bytedeco.javacpp.opencv_core.*;
 import org.bytedeco.javacpp.opencv_imgproc;
-import static org.bytedeco.javacpp.opencv_core.CV_32FC1;
-import static org.bytedeco.javacpp.opencv_core.CV_8UC1;
-import static org.bytedeco.javacpp.opencv_core.minMaxLoc;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.bytedeco.javacpp.opencv_core.*;
 import static org.bytedeco.javacpp.opencv_imgcodecs.imread;
-import static org.bytedeco.javacpp.opencv_imgproc.COLOR_BGR2GRAY;
-import static org.bytedeco.javacpp.opencv_imgproc.THRESH_TOZERO;
-import static org.bytedeco.javacpp.opencv_imgproc.TM_CCOEFF_NORMED;
-import static org.bytedeco.javacpp.opencv_imgproc.cvtColor;
-import static org.bytedeco.javacpp.opencv_imgproc.matchTemplate;
-import static org.bytedeco.javacpp.opencv_imgproc.rectangle;
-import static org.bytedeco.javacpp.opencv_imgproc.threshold;
+import static org.bytedeco.javacpp.opencv_imgproc.*;
 
 public class ImageMasker implements AutoCloseable {
 
-    private static final double THRESHOLD = 0.96;
+    private static final double THRESHOLD = 0.99;
 
     private final Mat subImage;
 
@@ -61,35 +53,69 @@ public class ImageMasker implements AutoCloseable {
                     mainImageGrey.rows() - subImageGrey.rows() + 1
             );
 
-            try (Mat result = new Mat(size, CV_32FC1)) {
-                matchTemplate(mainImageGrey, subImageGrey, result, TM_CCOEFF_NORMED);
-                threshold(result, result, 0.1, 1, THRESH_TOZERO);
-                counter += removeAllMatchTemplateResult(result, subImage, mainImage);
+            try (Mat match_result = new Mat(size, CV_32FC1);
+                    Mat threshold_result = new Mat(size, CV_8UC1)) {
+
+                matchTemplate(mainImageGrey, subImageGrey, match_result, TM_CCOEFF_NORMED);
+//                imwrite("build/after_match.png", multiply(match_result, 255).asMat());
+
+                threshold(match_result, match_result, THRESHOLD, 1, THRESH_TOZERO);
+//                imwrite("build/"+frameIndex+"_after_threshold.png", multiply(match_result, 255).asMat());
+
+                match_result.convertTo(threshold_result, CV_8UC1);
+
+                Mat locationMat = new Mat();
+                findNonZero(threshold_result, locationMat);
+                List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
+                if (similarPoints.isEmpty()) {
+                    return;
+                }
+                
+                int maxDistance = Math.min(subImage.cols(), subImage.rows());
+                List<Point> clusteredPoints = clusterPoints(similarPoints, maxDistance);
+                clusteredPoints.stream().forEach((point) -> {
+                    Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
+                    blurImage(mainImage, rect);
+                    rectangle(match_result, rect, new Scalar(0, 0, 0, 0));
+                });
             }
         }
     }
 
-    private int removeAllMatchTemplateResult(Mat result, Mat subImage, Mat searchImage) {
-        int count = 0;
-        try (
-                DoublePointer minVal = new DoublePointer(1);
-                DoublePointer maxVal = new DoublePointer(1);
-                Point min = new Point();
-                Point max = new Point()) {
-
-            while (true) {
-                minMaxLoc(result, minVal, maxVal, min, max, null);
-                double val = maxVal.get();
-                if (val < THRESHOLD) {
-                    break;
+    public static List<Point> collectSimilarPointsFromMat(Mat mat) {
+        List<Point> list = new ArrayList<>();
+        try {
+            IntRawIndexer indexer = mat.createIndexer();
+            for (int y = 0; y < mat.rows(); y++) {
+                for (int x = 0; x < mat.cols(); x++) {
+                    int pointX = indexer.get(x, y, 0);
+                    int pointY = indexer.get(x, y, 1);
+                    list.add(new Point(pointX, pointY));
                 }
-                Rect rect = new Rect(max.x(), max.y(), subImage.cols(), subImage.rows());
-                blurImage(searchImage, rect);
-                rectangle(result, rect, new Scalar(0, 0, 0, 0));
-                count++;
             }
+        } catch (NullPointerException ex) {
+            //Do nothing
+        } finally {
+            return list;
         }
-        return count;
+    }
+
+    public static List<Point> clusterPoints(List<Point> list, int maxDistance) {
+        Point previous = list.get(0);
+        List<Point> clustered = new ArrayList<>();
+        clustered.add(previous);
+        for (Point point : list) {
+            int distance = euclideanDistance(previous, point);
+            if (distance > maxDistance) {
+                clustered.add(point);
+            }
+            previous = point;
+        }
+        return clustered;
+    }
+
+    public static int euclideanDistance(Point p1, Point p2) {
+        return (new Double(Math.sqrt(Math.pow(p1.x() - p2.x(), 2) + Math.pow(p1.y() - p2.y(), 2)))).intValue();
     }
 
     private static void blurImage(Mat searchImage, Rect rect) {
