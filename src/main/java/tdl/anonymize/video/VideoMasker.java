@@ -41,60 +41,49 @@ public class VideoMasker implements AutoCloseable {
     }
 
     public void run() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
-        int batchSize = 1;
-        List<Frame> rawFramesBuffer = new ArrayList<>();
-        List<Frame> processedFrameBuffer = new ArrayList<>();
         try (FFmpegFrameGrabber grabber = createGrabber(); FFmpegFrameGrabber readAheadGrabber = createGrabber()) {
             grabber.start();
             readAheadGrabber.start();
-            int currentFrameIndex = 0;
-            int totalFrames = grabber.getLengthInFrames();
             try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
                 recorder.start();
+                int readAheadStep = 2;
+                int currentFrameIndex = 0;
+                int totalFrames = grabber.getLengthInFrames();
+
                 while (currentFrameIndex < totalFrames) {
-                    int framesToProcess = Math.min(batchSize, totalFrames - currentFrameIndex);
+                    int framesToProcess = Math.min(readAheadStep, totalFrames - currentFrameIndex);
                     long timeBefore = System.nanoTime();
 
-                    rawFramesBuffer.clear();
-                    processedFrameBuffer.clear();
-
-                    Frame frame1 = grabber.grab();
-                    rawFramesBuffer.add(frame1);
-
-                    if (framesToProcess > 1) {
-                        //Align the grabber
+                    Frame readAheadFrame;
+                    {
                         readAheadGrabber.grab();
-                        Frame frame2 = readAheadGrabber.grab();
-                        rawFramesBuffer.add(frame2);
+                        Frame frm = readAheadGrabber.grab();
+                        Mat mat = FRAME_CONVERTER.convert(frm);
+                        subImageMaskers.forEach((masker) -> masker.mask(mat));
+                        readAheadFrame = FRAME_CONVERTER.convert(mat);
                     }
 
-
-                    for (Frame frame : rawFramesBuffer) {
+                    {
+                        Frame frame = grabber.grab();
                         Mat mat = FRAME_CONVERTER.convert(frame);
                         subImageMaskers.forEach((masker) -> masker.mask(mat));
                         Frame editedFrame = FRAME_CONVERTER.convert(mat);
-                        processedFrameBuffer.add(editedFrame);
+                        recorder.record(editedFrame);
                     }
 
-                    for (int i = 0; i < framesToProcess; i++) {
-                        recorder.record(processedFrameBuffer.get(i));
-                    }
+                    recorder.record(readAheadFrame);
 
                     currentFrameIndex += framesToProcess;
 
-                    //Align grabbers to new index
-                    while (grabber.getFrameNumber() < currentFrameIndex) {
+                    //Align grabbers
+                    if (framesToProcess > 1) {
                         grabber.grab();
                     }
 
-                    while (readAheadGrabber.getFrameNumber() < currentFrameIndex) {
-                        readAheadGrabber.grab();
-                    }
 
                     long timeAfter = System.nanoTime();
-                    System.out.printf("Processed %d frames in: %d ms\n", framesToProcess, ((timeAfter - timeBefore) / 1000000));
-
-
+                    long durationMs = (timeAfter - timeBefore) / 1000000;
+                    System.out.printf("Processing speed: %d ms per frame\n", durationMs/framesToProcess);
                 }
             }
         }
