@@ -65,16 +65,14 @@ public class CanMaskSubImagesTest {
 
     }
 
-    @Ignore("WIP")
     @Test
     public void should_be_able_to_read_ahead_frames() throws Exception {
         String destination = "build/recording-masked.5.mp4";
-        Path subImage1 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-2.png");
+        Path subImage1 = Paths.get("src/test/resources/rec_barcode_static/subimage-1.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_WITH_STATIC_PATH),
                 Paths.get(destination),
-                Arrays.asList(subImage1, subImage2)
+                Collections.singletonList(subImage1)
         );
         masker.run(3);
 
@@ -82,22 +80,24 @@ public class CanMaskSubImagesTest {
                 = getReadedBarcodeFromVideo(destination).stream()
                 .filter(CanMaskSubImagesTest::isPayloadOutOfOrder)
                 .collect(Collectors.toList());
-        assertThat(tamperedBarcodes.size(), is(2));
+        assertThat(tamperedBarcodes.size(), is(3));
         assertDecodedBarcode(tamperedBarcodes.get(0),
-                7L, "", "1200", "1200", "");
+                3L, "999", "", "", "999");
         assertDecodedBarcode(tamperedBarcodes.get(1),
-                9L, "", "", "", "");
+                4L, "999", "", "", "999");
+        assertDecodedBarcode(tamperedBarcodes.get(2),
+                5L, "999", "", "", "999");
 
     }
 
     @SuppressWarnings("SameParameterValue")
     private void assertDecodedBarcode(OutputToBarcodeMatrixReader.TimestampedPayload frame, long timestamp,
                                       String topLeft, String topRight, String bottomLeft, String bottomRight) {
-        assertThat(frame.videoTimestamp, is(timestamp));
-        assertThat(frame.topLeftPayload, is(topLeft));
-        assertThat(frame.topRightPayload, is(topRight));
-        assertThat(frame.bottomLeftPayload, is(bottomLeft));
-        assertThat(frame.bottomRightPayload, is(bottomRight));
+        assertThat("["+timestamp+"] videoTimestamp", frame.videoTimestamp, is(timestamp));
+        assertThat("["+timestamp+"] topLeftPayload", frame.topLeftPayload, is(topLeft));
+        assertThat("["+timestamp+"] topRightPayload", frame.topRightPayload, is(topRight));
+        assertThat("["+timestamp+"] bottomLeftPayload", frame.bottomLeftPayload, is(bottomLeft));
+        assertThat("["+timestamp+"] bottomRightPayload", frame.bottomRightPayload, is(bottomRight));
     }
 
     //~~~~~~~~~~ Helpers

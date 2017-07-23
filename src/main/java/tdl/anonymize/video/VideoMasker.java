@@ -87,6 +87,8 @@ public class VideoMasker implements AutoCloseable {
                     //Align the normal grabbers
                     grabber.grab();
 
+                    //Store the previous frame
+                    previousReadAheadFrame = editedReadAheadFrame;
 
                     long timeAfter = System.nanoTime();
                     long durationMs = (timeAfter - timeBefore) / 1000000;
