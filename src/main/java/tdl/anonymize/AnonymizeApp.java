@@ -2,26 +2,36 @@ package tdl.anonymize;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import lombok.extern.slf4j.Slf4j;
+import tdl.anonymize.video.VideoMasker;
+
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import lombok.extern.slf4j.Slf4j;
-import tdl.anonymize.video.VideoMasker;
 
 /**
  * This will receive list of paths. The first path will be the main image,
  * followed by paths of sub image to be censored.
  */
+@SuppressWarnings("FieldCanBeLocal")
 @Slf4j
 public class AnonymizeApp {
 
-    @Parameter()
-    private List<String> paths = new ArrayList<>();
+    @Parameter(names = {"-i", "--input"}, description = "The path to the input recording file", required = true)
+    private String inputVideoPath;
 
-    @Parameter(names = {"-o", "--output"}, description = "The path to the recording file")
-    private String destinationPath = "./output.mp4";
+    @Parameter(names = {"-o", "--output"}, description = "The path to the output recording file", required = true)
+    private String outputVideoPath;
+
+    @Parameter(names = {"-sd", "--subimages-dir"}, description = "Folder containing the subimages to match", required = true)
+    private String subimagesDirPath;
+
+    @Parameter(names = {"-cbs", "--continuous-block-size"}, description = "Assume that the subimages will match in blocks")
+    private Integer continuousBlockSize = 3;
+
 
     public static void main(String[] args) throws Exception {
         AnonymizeApp main = new AnonymizeApp();
@@ -33,15 +43,22 @@ public class AnonymizeApp {
     }
 
     private void run() throws Exception {
-        if (paths.size() < 2) {
-            throw new RuntimeException("Parameter has to be at least 2");
+        Path inputVideo = Paths.get(inputVideoPath);
+        Path outputVideo = Paths.get(outputVideoPath);
+        List<Path> subImages = new ArrayList<>();
+
+        Path subimagesDir = Paths.get(subimagesDirPath);
+        try (DirectoryStream<Path> stream =
+                     Files.newDirectoryStream(subimagesDir, "*.{png,jpg}")) {
+            for (Path entry: stream) {
+                subImages.add(entry);
+            }
         }
-        Path videoPath = Paths.get(paths.get(0));
-        paths.remove(0);
-        List<Path> subImagePaths = paths.stream().map(Paths::get).collect(Collectors.toList());
-        Path destination = Paths.get(destinationPath);
-        
-        VideoMasker masker = new VideoMasker(videoPath, destination, subImagePaths);
-        masker.run(3);
+
+        System.out.println("List of subimages:");
+        subImages.forEach(System.out::println);
+
+        VideoMasker masker = new VideoMasker(inputVideo, outputVideo, subImages);
+        masker.run(continuousBlockSize);
     }
 }

@@ -9,16 +9,32 @@ Tool to anonymise a screen recording
 To build, execute
 
 ```
-./gradlew build shadowJar
+./gradlew build shadowJar -i 
 ```
+
+# Prepare video
+
+Create a folder to store the subimages containing sensitive data, say `subimages`
+
+Go through the video frames and take note of the frames containing sensitive data.  
+Dump those frames using FFMpeg:
+```bash
+ffmpeg -i real-recording.mp4 -ss 00:00:14.000 -vframes 1 subimages/screen.png
+```
+
+Using GIMP, crop the areas containing the data you want to mask. Overwrite the original image.
+
 
 # Executing
 
 To anonymize a video, execute
 
 ```
-java -jar build/libs/dev-screen-anonymise-all.jar [--output <outputpath>] \
-    <input mp4> <subimage [subimage  ..]>
+java -jar build/libs/dev-screen-anonymise-0.0.1-SNAPSHOT-all.jar \
+    --input <input.mp4> \
+    --output <outputpath.mp4> \
+    --subimages-dir <subimagesdir> \
+    --continuous-block-size 3
 ```
 
 For example

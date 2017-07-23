@@ -142,18 +142,20 @@ public class VideoMasker implements AutoCloseable {
 
         Map<ImageMasker, List<opencv_core.Point>> matchedMaskers = new HashMap<>();
         Mat mat = FRAME_CONVERTER.convert(frame);
-        for (ImageMasker masker : subImageMaskers) {
 
-            List<opencv_core.Point> matchingPoints;
-            if (reusableMatches.containsKey(masker)) {
-                matchingPoints = reusableMatches.get(masker);
-            } else {
-                matchingPoints = masker.findMatchingPoints(mat);
-            }
-            masker.blurPoints(matchingPoints, mat);
+        if (mat != null) {
+            for (ImageMasker masker : subImageMaskers) {
+                List<opencv_core.Point> matchingPoints;
+                if (reusableMatches.containsKey(masker)) {
+                    matchingPoints = reusableMatches.get(masker);
+                } else {
+                    matchingPoints = masker.findMatchingPoints(mat);
+                }
+                masker.blurPoints(matchingPoints, mat);
 
-            if (matchingPoints.size() > 0) {
-                matchedMaskers.put(masker, matchingPoints);
+                if (matchingPoints.size() > 0) {
+                    matchedMaskers.put(masker, matchingPoints);
+                }
             }
         }
 
