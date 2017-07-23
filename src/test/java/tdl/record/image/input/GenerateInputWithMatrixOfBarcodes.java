@@ -22,7 +22,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class GenerateInputWithMatrixOfBarcodes implements ImageInput {
-    public static final String OUTPUT_PATH = "src/test/resources/video/recording_from_matrix_of_barcodes_at_4x.mp4";
+    public static final String BARCODE_VIDEO_PATH = "src/test/resources/rec_barcode_matrix/recording_from_matrix_of_barcodes_at_4x.mp4";
+    public static final String BARCODE_WITH_STATIC_PATH = "src/test/resources/rec_barcode_static/recording_from_matrix_of_barcodes_with_static.mp4";
 
     private final int width;
     private final int height;
@@ -82,7 +83,17 @@ public class GenerateInputWithMatrixOfBarcodes implements ImageInput {
         BitMatrix barcodeQR;
 
         try {
+            long seconds = timeUnit.toSeconds(timestamp);
+            long millis = timeUnit.toMillis(timestamp) - TimeUnit.SECONDS.toMillis(seconds);
+
             String barCodeContents = Long.toString(timeUnit.toMillis(timestamp));
+            String label = String.format("%d.%03d", seconds, millis);
+            if (seconds == 0 && millis >= 400 && millis <= 800) {
+                barCodeContents = "999";
+                label = "static";
+            }
+
+
             MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
             barcode2D = multiFormatWriter.encode(
                     barCodeContents, BarcodeFormat.CODE_39,
@@ -95,10 +106,6 @@ public class GenerateInputWithMatrixOfBarcodes implements ImageInput {
                     barcodeImageRaster.getRecommendedBarcodeHeight(),
                     hints);
 
-            long seconds = timeUnit.toSeconds(timestamp);
-            long millis = timeUnit.toMillis(timestamp) - TimeUnit.SECONDS.toMillis(seconds);
-
-            String label = String.format("%d.%03d", seconds, millis);
             return barcodeImageRaster.renderToImage(barcode2D, barcodeQR, label);
         } catch (WriterException e) {
             throw new BarcodeGenerationException(e);
@@ -228,8 +235,8 @@ public class GenerateInputWithMatrixOfBarcodes implements ImageInput {
         VideoRecorder videoRecorder = new VideoRecorder.Builder(barcodeInput)
                 .withTimeSource(fakeTimeSource).build();
         // Capture video
-        videoRecorder.open(OUTPUT_PATH, 5, 4);
-        videoRecorder.start(Duration.of(4, ChronoUnit.SECONDS));
+        videoRecorder.open(BARCODE_VIDEO_PATH, 5, 4);
+        videoRecorder.start(Duration.of(2, ChronoUnit.SECONDS));
         videoRecorder.close();
     }
 }

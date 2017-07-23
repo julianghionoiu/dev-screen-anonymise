@@ -14,20 +14,14 @@ import static org.bytedeco.javacpp.opencv_imgproc.*;
 
 public class ImageMasker implements AutoCloseable {
 
-    private static final double THRESHOLD = 0.99;
+    private static final double THRESHOLD = 0.98;
 
     private final Mat subImage;
 
     private final Mat subImageGrey;
 
-    private int counter = 0;
-
     public ImageMasker(Path subImagePath) throws ImageMaskerException {
-        this(imread(subImagePath.toString()));
-    }
-
-    public ImageMasker(Mat subImage) throws ImageMaskerException {
-        this.subImage = subImage;
+        this.subImage = imread(subImagePath.toString());
         throwExceptionIfMainImageIsEmpty();
         this.subImageGrey = createGreyImage(subImage);
     }
@@ -44,8 +38,8 @@ public class ImageMasker implements AutoCloseable {
         return grey;
     }
 
-    public void mask(Mat mainImage) {
-        counter = 0;
+    public int mask(Mat mainImage) {
+        int totalMatches = 0;
         try (Mat mainImageGrey = createGreyImage(mainImage)) {
 
             Size size = new Size(
@@ -68,21 +62,23 @@ public class ImageMasker implements AutoCloseable {
                 findNonZero(threshold_result, locationMat);
                 List<Point> similarPoints = collectSimilarPointsFromMat(locationMat);
                 if (similarPoints.isEmpty()) {
-                    return;
+                    return totalMatches;
                 }
-                
+
                 int maxDistance = Math.min(subImage.cols(), subImage.rows());
                 List<Point> clusteredPoints = clusterPoints(similarPoints, maxDistance);
-                clusteredPoints.stream().forEach((point) -> {
+                totalMatches = clusteredPoints.size();
+                clusteredPoints.forEach((point) -> {
                     Rect rect = new Rect(point.x(), point.y(), subImage.cols(), subImage.rows());
                     blurImage(mainImage, rect);
                     rectangle(match_result, rect, new Scalar(0, 0, 0, 0));
                 });
             }
         }
+        return totalMatches;
     }
 
-    public static List<Point> collectSimilarPointsFromMat(Mat mat) {
+    private static List<Point> collectSimilarPointsFromMat(Mat mat) {
         List<Point> list = new ArrayList<>();
         try {
             IntRawIndexer indexer = mat.createIndexer();
@@ -95,12 +91,12 @@ public class ImageMasker implements AutoCloseable {
             }
         } catch (NullPointerException ex) {
             //Do nothing
-        } finally {
-            return list;
         }
+
+        return list;
     }
 
-    public static List<Point> clusterPoints(List<Point> list, int maxDistance) {
+    private static List<Point> clusterPoints(List<Point> list, int maxDistance) {
         Point previous = list.get(0);
         List<Point> clustered = new ArrayList<>();
         clustered.add(previous);
@@ -114,13 +110,13 @@ public class ImageMasker implements AutoCloseable {
         return clustered;
     }
 
-    public static int euclideanDistance(Point p1, Point p2) {
+    private static int euclideanDistance(Point p1, Point p2) {
         return (new Double(Math.sqrt(Math.pow(p1.x() - p2.x(), 2) + Math.pow(p1.y() - p2.y(), 2)))).intValue();
     }
 
     private static void blurImage(Mat searchImage, Rect rect) {
-        int kernelWidth = (int) Math.round(rect.size().width() / 2);
-        int kernelHeight = (int) Math.round(rect.size().height() / 2);
+        int kernelWidth = Math.round(rect.size().width() / 2);
+        int kernelHeight = Math.round(rect.size().height() / 2);
         try (Mat region = new Mat(searchImage, rect);
                 Size kernelSize = new Size(kernelWidth, kernelHeight)) {
             opencv_imgproc.blur(region, region, kernelSize);
@@ -129,10 +125,6 @@ public class ImageMasker implements AutoCloseable {
 
     public Mat getImage() {
         return subImage;
-    }
-
-    public int getCount() {
-        return counter;
     }
 
     @Override

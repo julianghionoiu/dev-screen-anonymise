@@ -8,9 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.bytedeco.javacv.FrameGrabber;
-import org.bytedeco.javacv.FrameRecorder;
-import tdl.anonymize.image.ImageMaskerException;
 import tdl.anonymize.video.VideoMasker;
 
 /**
@@ -21,12 +18,12 @@ import tdl.anonymize.video.VideoMasker;
 public class AnonymizeApp {
 
     @Parameter()
-    public List<String> paths = new ArrayList<>();
+    private List<String> paths = new ArrayList<>();
 
     @Parameter(names = {"-o", "--output"}, description = "The path to the recording file")
-    public String destinationPath = "./output.mp4";
+    private String destinationPath = "./output.mp4";
 
-    public static void main(String[] args) throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception, Exception {
+    public static void main(String[] args) throws Exception {
         AnonymizeApp main = new AnonymizeApp();
         JCommander.newBuilder()
                 .addObject(main)
@@ -35,7 +32,7 @@ public class AnonymizeApp {
         main.run();
     }
 
-    public void run() throws ImageMaskerException, FrameGrabber.Exception, FrameRecorder.Exception, Exception {
+    private void run() throws Exception {
         if (paths.size() < 2) {
             throw new RuntimeException("Parameter has to be at least 2");
         }
@@ -45,6 +42,6 @@ public class AnonymizeApp {
         Path destination = Paths.get(destinationPath);
         
         VideoMasker masker = new VideoMasker(videoPath, destination, subImagePaths);
-        masker.run();
+        masker.run(3);
     }
 }

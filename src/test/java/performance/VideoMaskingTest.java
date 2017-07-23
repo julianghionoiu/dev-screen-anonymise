@@ -10,7 +10,7 @@ import tdl.anonymize.video.VideoMasker;
 
 public class VideoMaskingTest {
 
-    private static final String VIDEO_INPUT_PATH = "./src/test/resources/real-recording.mp4";
+    private static final String VIDEO_INPUT_PATH = "./src/test/resources/rec_real/real-recording.mp4";
 
     private static Map<String, Long> timer = new HashMap<>();
 
@@ -31,38 +31,41 @@ public class VideoMaskingTest {
     @Test
     public void run() throws Exception {
         startTimer("run_without_masking");
-        int count0 = runWithoutMasking();
+        runWithoutMasking();
         long baseline = endTimer("run_without_masking");
 
-        startTimer("run_with_two_maskings");
-        int count2 = runWithTwoMaskings();
-        long duration2 = endTimer("run_with_two_maskings");
+        startTimer("run_with_three_maskings");
+        runWithThreeMaskings();
+        long durationWithProcessing = endTimer("run_with_three_maskings");
 
-        double ratio2 = calculateRatio(duration2, baseline);
-        System.out.printf("%d %f\n", count2, ratio2);
+        System.out.printf("Ratio: %f\n", calculateRatio(durationWithProcessing, baseline));
     }
 
-    private int runWithoutMasking() throws Exception {
+    private void runWithoutMasking() throws Exception {
         String destination = "build/real-recording.masked.1.mp4";
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
                 Arrays.asList(new Path[]{})
         );
-        masker.run();
-        return masker.getCount();
+        masker.run(3);
     }
 
-    private int runWithTwoMaskings() throws Exception {
+    /**
+     * To generate the images run:
+     *  ffmpeg -i real-recording.mp4 -ss 00:00:14.000 -vframes 1 screen.png
+     *
+     */
+    private void runWithThreeMaskings() throws Exception {
         String destination = "build/real-recording.masked.2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/real-recording-subimage-2.png");
+        Path subImage1 = Paths.get("src/test/resources/rec_real/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/rec_real/subimage-2.png");
+        Path subImage3 = Paths.get("src/test/resources/rec_real/subimage-3.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
-                Arrays.asList(new Path[]{subImage1, subImage2})
+                Arrays.asList(subImage1, subImage2, subImage3)
         );
-        masker.run();
-        return masker.getCount();
+        masker.run(3);
     }
 }
