@@ -41,7 +41,7 @@ public class VideoMasker implements AutoCloseable {
     }
 
     public void run() throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
-        int batchSize = 2;
+        int batchSize = 1;
         List<Frame> rawFramesBuffer = new ArrayList<>();
         List<Frame> processedFrameBuffer = new ArrayList<>();
         try (FFmpegFrameGrabber grabber = createGrabber(); FFmpegFrameGrabber readAheadGrabber = createGrabber()) {
@@ -58,15 +58,15 @@ public class VideoMasker implements AutoCloseable {
                     rawFramesBuffer.clear();
                     processedFrameBuffer.clear();
 
+                    Frame frame1 = grabber.grab();
+                    rawFramesBuffer.add(frame1);
+
                     if (framesToProcess > 1) {
                         //Align the grabber
                         readAheadGrabber.grab();
                         Frame frame2 = readAheadGrabber.grab();
                         rawFramesBuffer.add(frame2);
                     }
-
-                    Frame frame1 = grabber.grab();
-                    rawFramesBuffer.add(frame1);
 
 
                     for (Frame frame : rawFramesBuffer) {
@@ -90,7 +90,6 @@ public class VideoMasker implements AutoCloseable {
                     while (readAheadGrabber.getFrameNumber() < currentFrameIndex) {
                         readAheadGrabber.grab();
                     }
-
 
                     long timeAfter = System.nanoTime();
                     System.out.printf("Processed %d frames in: %d ms\n", framesToProcess, ((timeAfter - timeBefore) / 1000000));
