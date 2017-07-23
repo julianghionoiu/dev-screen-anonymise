@@ -10,7 +10,7 @@ import tdl.anonymize.video.VideoMasker;
 
 public class VideoMaskingTest {
 
-    private static final String VIDEO_INPUT_PATH = "./src/test/resources/real-recording.mp4";
+    private static final String VIDEO_INPUT_PATH = "./src/test/resources/rec_real/real-recording.mp4";
 
     private static Map<String, Long> timer = new HashMap<>();
 
@@ -58,9 +58,9 @@ public class VideoMaskingTest {
      */
     private void runWithThreeMaskings() throws Exception {
         String destination = "build/real-recording.masked.2.mp4";
-        Path subImage1 = Paths.get("src/test/resources/real-recording-subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/real-recording-subimage-2.png");
-        Path subImage3 = Paths.get("src/test/resources/real-recording-subimage-3.png");
+        Path subImage1 = Paths.get("src/test/resources/rec_real/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/rec_real/subimage-2.png");
+        Path subImage3 = Paths.get("src/test/resources/rec_real/subimage-3.png");
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),

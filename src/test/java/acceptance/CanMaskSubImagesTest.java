@@ -1,41 +1,34 @@
 package acceptance;
 
-import java.io.IOException;
-
+import org.junit.Ignore;
 import org.junit.Test;
-import tdl.record.image.input.*;
+import tdl.anonymize.video.VideoMasker;
+import tdl.record.image.input.GenerateInputWithMatrixOfBarcodes;
 import tdl.record.image.output.OutputToBarcodeMatrixReader;
 import tdl.record.time.FakeTimeSource;
 import tdl.record.video.VideoPlayer;
+import tdl.record.video.VideoPlayerException;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import static java.lang.Math.abs;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
-import java.util.Arrays;
-import java.util.stream.Collectors;
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertTrue;
-
-import tdl.anonymize.video.VideoMasker;
-import tdl.record.video.VideoPlayerException;
-
 public class CanMaskSubImagesTest {
-
-    private static final String VIDEO_INPUT_PATH = GenerateInputWithMatrixOfBarcodes.OUTPUT_PATH;
 
     @Test
     public void should_not_have_false_positives() throws Exception {
 
         String destination = "build/recording_not_changed_after_false_matches.mp4";
-        Path subImage = Paths.get("src/test/resources/barcode-false-positive.png");
+        Path subImage = Paths.get("src/test/resources/images/barcode-false-positive.png");
         VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
+                Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_VIDEO_PATH),
                 Paths.get(destination),
                 Collections.singletonList(subImage)
         );
@@ -51,10 +44,10 @@ public class CanMaskSubImagesTest {
     @Test
     public void should_have_multiple_true_positives_in_multiple_frames() throws Exception {
         String destination = "build/recording-masked.4.mp4";
-        Path subImage1 = Paths.get("src/test/resources/subimage-1.png");
-        Path subImage2 = Paths.get("src/test/resources/subimage-2.png");
+        Path subImage1 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-2.png");
         VideoMasker masker = new VideoMasker(
-                Paths.get(VIDEO_INPUT_PATH),
+                Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_VIDEO_PATH),
                 Paths.get(destination),
                 Arrays.asList(subImage1, subImage2)
         );
@@ -64,6 +57,31 @@ public class CanMaskSubImagesTest {
                 = getReadedBarcodeFromVideo(destination).stream()
                         .filter(CanMaskSubImagesTest::isPayloadOutOfOrder)
                         .collect(Collectors.toList());
+        assertThat(tamperedBarcodes.size(), is(2));
+        assertDecodedBarcode(tamperedBarcodes.get(0),
+                7L, "", "1200", "1200", "");
+        assertDecodedBarcode(tamperedBarcodes.get(1),
+                9L, "", "", "", "");
+
+    }
+
+    @Ignore("WIP")
+    @Test
+    public void should_be_able_to_read_ahead_frames() throws Exception {
+        String destination = "build/recording-masked.5.mp4";
+        Path subImage1 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-1.png");
+        Path subImage2 = Paths.get("src/test/resources/rec_barcode_matrix/subimage-2.png");
+        VideoMasker masker = new VideoMasker(
+                Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_WITH_STATIC_PATH),
+                Paths.get(destination),
+                Arrays.asList(subImage1, subImage2)
+        );
+        masker.run(3);
+
+        List<OutputToBarcodeMatrixReader.TimestampedPayload> tamperedBarcodes
+                = getReadedBarcodeFromVideo(destination).stream()
+                .filter(CanMaskSubImagesTest::isPayloadOutOfOrder)
+                .collect(Collectors.toList());
         assertThat(tamperedBarcodes.size(), is(2));
         assertDecodedBarcode(tamperedBarcodes.get(0),
                 7L, "", "1200", "1200", "");
