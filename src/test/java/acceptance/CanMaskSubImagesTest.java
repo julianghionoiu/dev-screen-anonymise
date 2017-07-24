@@ -1,6 +1,5 @@
 package acceptance;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import tdl.anonymize.video.VideoMasker;
 import tdl.record.image.input.GenerateInputWithMatrixOfBarcodes;

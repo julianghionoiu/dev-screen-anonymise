@@ -1,12 +1,16 @@
 package performance;
 
+import org.junit.Test;
+import tdl.anonymize.video.VideoMasker;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Test;
-import tdl.anonymize.video.VideoMasker;
+
+import static org.hamcrest.Matchers.lessThan;
+import static org.junit.Assert.assertThat;
 
 public class VideoMaskingTest {
 
@@ -38,7 +42,11 @@ public class VideoMaskingTest {
         runWithThreeMaskings();
         long durationWithProcessing = endTimer("run_with_three_maskings");
 
-        System.out.printf("Ratio: %f\n", calculateRatio(durationWithProcessing, baseline));
+        double ratio = calculateRatio(durationWithProcessing, baseline);
+        System.out.printf("Ratio: %f\n", ratio);
+
+//        assertThat(ratio, lessThan(3d));  // On Julian's laptop
+        assertThat(ratio, lessThan(10d)); // On Codeship
     }
 
     private void runWithoutMasking() throws Exception {
