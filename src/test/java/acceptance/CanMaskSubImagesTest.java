@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class CanMaskSubImagesTest {
+    private static final double TEST_MATCHING_THRESHOLD = 0.98;
 
     @Test
     public void should_not_have_false_positives() throws Exception {
@@ -29,7 +30,7 @@ public class CanMaskSubImagesTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_VIDEO_PATH),
                 Paths.get(destination),
-                Collections.singletonList(subImage)
+                Collections.singletonList(subImage), TEST_MATCHING_THRESHOLD
         );
         masker.run(1);
 
@@ -48,7 +49,8 @@ public class CanMaskSubImagesTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_VIDEO_PATH),
                 Paths.get(destination),
-                Arrays.asList(subImage1, subImage2)
+                Arrays.asList(subImage1, subImage2),
+                TEST_MATCHING_THRESHOLD
         );
         masker.run(1);
 
@@ -71,7 +73,8 @@ public class CanMaskSubImagesTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(GenerateInputWithMatrixOfBarcodes.BARCODE_WITH_STATIC_PATH),
                 Paths.get(destination),
-                Collections.singletonList(subImage1)
+                Collections.singletonList(subImage1),
+                TEST_MATCHING_THRESHOLD
         );
         masker.run(3);
 

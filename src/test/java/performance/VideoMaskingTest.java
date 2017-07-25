@@ -46,7 +46,6 @@ public class VideoMaskingTest {
         System.out.printf("Ratio: %f\n", ratio);
 
 //        assertThat(ratio, lessThan(3d));  // On Julian's laptop
-        assertThat(ratio, lessThan(10d)); // On Codeship
     }
 
     private void runWithoutMasking() throws Exception {
@@ -54,7 +53,8 @@ public class VideoMaskingTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
-                Arrays.asList(new Path[]{})
+                Arrays.asList(new Path[]{}),
+                0.96
         );
         masker.run(3);
     }
@@ -72,7 +72,8 @@ public class VideoMaskingTest {
         VideoMasker masker = new VideoMasker(
                 Paths.get(VIDEO_INPUT_PATH),
                 Paths.get(destination),
-                Arrays.asList(subImage1, subImage2, subImage3)
+                Arrays.asList(subImage1, subImage2, subImage3),
+                0.96
         );
         masker.run(3);
     }

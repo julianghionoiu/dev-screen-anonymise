@@ -13,6 +13,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.bytedeco.javacpp.avcodec.AV_CODEC_ID_H264;
+import static org.bytedeco.javacpp.avutil.AV_PIX_FMT_YUV420P;
+
 /**
  * Receives a path to a video and then findMatchingPoints.
  *
@@ -26,12 +29,12 @@ public class VideoMasker implements AutoCloseable {
     private final List<ImageMasker> allSubImageMaskers;
 
     //TODO: Wrap frame grabber exception
-    public VideoMasker(Path inputPath, Path outputPath, List<Path> subImagePaths) {
+    public VideoMasker(Path inputPath, Path outputPath, List<Path> subImagePaths, double matchingThreshold) {
         this.inputPath = inputPath;
         this.outputPath = outputPath;
         this.allSubImageMaskers = subImagePaths.stream().map((path) -> {
             try {
-                return new ImageMasker(path);
+                return new ImageMasker(path, matchingThreshold);
             } catch (ImageMaskerException ex) {
                 return null;
             }
@@ -40,14 +43,14 @@ public class VideoMasker implements AutoCloseable {
                 .collect(Collectors.toList());
     }
 
-    public void run(int readAheadStep) throws FrameGrabber.Exception, ImageMaskerException, FrameRecorder.Exception {
-        try (FFmpegFrameGrabber grabber = createGrabber(); FFmpegFrameGrabber readAheadGrabber = createGrabber()) {
-            grabber.start();
+    public void run(int readAheadStep) throws Exception {
+        try (Grabber sequentialGrabber = createGrabber(); Grabber readAheadGrabber = createGrabber()) {
+            sequentialGrabber.start();
             readAheadGrabber.start();
-            try (FFmpegFrameRecorder recorder = createRecorder(grabber)) {
+            try (FFmpegFrameRecorder recorder = createRecorder(sequentialGrabber)) {
                 recorder.start();
                 int currentFrameIndex = 0;
-                int totalFrames = grabber.getLengthInFrames();
+                int totalFrames = sequentialGrabber.getLengthInFrames();
                 List<ImageMasker> activeImageMaskers = new ArrayList<>();
 
                 // Start with no triggered matchers and no previous matching points
@@ -56,6 +59,9 @@ public class VideoMasker implements AutoCloseable {
 
 
                 while (currentFrameIndex < totalFrames) {
+                    // Sync with the grabber index in case some audio frames have been skipped
+                    currentFrameIndex = Math.max(currentFrameIndex, sequentialGrabber.getFrameNumber());
+
                     int framesToReadAhead = Math.min(readAheadStep, totalFrames - currentFrameIndex);
                     int normalFramesToRead = framesToReadAhead - 1;
 
@@ -63,10 +69,10 @@ public class VideoMasker implements AutoCloseable {
 
                     //Skip the normal frames
                     for (int i = 0; i < normalFramesToRead; i++) {
-                        readAheadGrabber.grab();
+                        readAheadGrabber.grabImage();
                     }
                     reusableMatches.clear();
-                    ProcessedFrame editedReadAheadFrame = processFrame(readAheadGrabber.grab(), allSubImageMaskers, reusableMatches);
+                    ProcessedFrame editedReadAheadFrame = processFrame(readAheadGrabber.grabImage(), allSubImageMaskers, reusableMatches);
 
                     //Compute active maskers
                     activeImageMaskers.clear();
@@ -89,7 +95,7 @@ public class VideoMasker implements AutoCloseable {
 
                     //Mask normal frames
                     for (int i = 0; i < normalFramesToRead; i++) {
-                        ProcessedFrame editedNormalFrame = processFrame(grabber.grab(), activeImageMaskers, reusableMatches);
+                        ProcessedFrame editedNormalFrame = processFrame(sequentialGrabber.grabImage(), activeImageMaskers, reusableMatches);
                         recorder.record(editedNormalFrame.frame);
                         currentFrameIndex += 1;
                     }
@@ -99,7 +105,7 @@ public class VideoMasker implements AutoCloseable {
                     currentFrameIndex += 1;
 
                     //Align the normal grabbers
-                    grabber.grab();
+                    sequentialGrabber.grabImage();
 
                     //Store the previous frame
                     previousReadAheadFrame.dispose();
@@ -107,7 +113,7 @@ public class VideoMasker implements AutoCloseable {
 
                     long timeAfter = System.nanoTime();
                     long durationMs = (timeAfter - timeBefore) / 1000000;
-                    System.out.printf("Processing speed: %d ms per frame\n", durationMs/framesToReadAhead);
+                    System.out.printf("["+currentFrameIndex+"/"+totalFrames+"] Processing speed: %d ms per frame\n", durationMs/framesToReadAhead);
                 }
             }
         }
@@ -143,23 +149,22 @@ public class VideoMasker implements AutoCloseable {
         Map<ImageMasker, List<opencv_core.Point>> matchedMaskers = new HashMap<>();
         Mat mat = FRAME_CONVERTER.convert(frame);
 
-        if (mat != null) {
-            for (ImageMasker masker : subImageMaskers) {
-                List<opencv_core.Point> matchingPoints;
-                if (reusableMatches.containsKey(masker)) {
-                    matchingPoints = reusableMatches.get(masker);
-                } else {
-                    matchingPoints = masker.findMatchingPoints(mat);
-                }
-                masker.blurPoints(matchingPoints, mat);
+        for (ImageMasker masker : subImageMaskers) {
+            List<opencv_core.Point> matchingPoints;
+            if (reusableMatches.containsKey(masker)) {
+                matchingPoints = reusableMatches.get(masker);
+            } else {
+                matchingPoints = masker.findMatchingPoints(mat);
+            }
+            masker.blurPoints(matchingPoints, mat);
 
-                if (matchingPoints.size() > 0) {
-                    matchedMaskers.put(masker, matchingPoints);
-                }
+            if (matchingPoints.size() > 0) {
+                matchedMaskers.put(masker, matchingPoints);
             }
         }
 
         Frame editedFrame = FRAME_CONVERTER.convert(mat);
+
         return new ProcessedFrame(editedFrame, matchedMaskers);
     }
 
@@ -180,23 +185,79 @@ public class VideoMasker implements AutoCloseable {
     private static final ToMat FRAME_CONVERTER = new ToMat();
 
 
-    private FFmpegFrameGrabber createGrabber() {
-        return new FFmpegFrameGrabber(inputPath.toFile());
+    /**
+     * The grabber is extended to prevent accidental access to the wrong grab methods
+     */
+    private static class Grabber implements AutoCloseable {
+        FFmpegFrameGrabber grabber;
+
+        Grabber(FFmpegFrameGrabber grabber) {
+            this.grabber = grabber;
+        }
+
+        static Grabber fromFile(Path inputPath) {
+            return new Grabber(new FFmpegFrameGrabber(inputPath.toFile()));
+        }
+
+        private void start() throws FrameGrabber.Exception {
+            grabber.start();
+        }
+
+        Frame grabImage() throws FrameGrabber.Exception {
+            return grabber.grabImage();
+        }
+
+        int getLengthInFrames() {
+            return grabber.getLengthInFrames();
+        }
+
+        int getFrameNumber() {
+            return grabber.getFrameNumber();
+        }
+
+        int getImageWidth() {
+            return grabber.getImageWidth();
+        }
+
+        int getImageHeight() {
+            return grabber.getImageHeight();
+        }
+
+        double getFrameRate() {
+            return grabber.getFrameRate();
+        }
+
+        int getSampleFormat() {
+            return grabber.getSampleFormat();
+        }
+
+        int getSampleRate() {
+            return grabber.getSampleRate();
+        }
+
+        @Override
+        public void close() throws Exception {
+            grabber.close();
+        }
     }
 
-    private FFmpegFrameRecorder createRecorder(FFmpegFrameGrabber grabber) {
+    private Grabber createGrabber() {
+        return Grabber.fromFile(inputPath);
+    }
+
+    private FFmpegFrameRecorder createRecorder(Grabber grabber) {
         FFmpegFrameRecorder recorder = new FFmpegFrameRecorder(
                 outputPath.toFile(),
                 grabber.getImageWidth(),
                 grabber.getImageHeight(),
-                2
+                0
         );
-        recorder.setVideoCodec(grabber.getVideoCodec());
-        recorder.setFormat(grabber.getFormat());
+        recorder.setVideoCodec(AV_CODEC_ID_H264);
+        recorder.setPixelFormat(AV_PIX_FMT_YUV420P);
+        recorder.setFormat("mp4");
         recorder.setFrameRate(grabber.getFrameRate());
         recorder.setSampleFormat(grabber.getSampleFormat());
         recorder.setSampleRate(grabber.getSampleRate());
-        recorder.setAudioCodec(grabber.getAudioCodec());
         return recorder;
     }
 

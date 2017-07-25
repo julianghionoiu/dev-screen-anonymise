@@ -29,6 +29,10 @@ public class AnonymizeApp {
     @Parameter(names = {"-sd", "--subimages-dir"}, description = "Folder containing the subimages to match", required = true)
     private String subimagesDirPath;
 
+    @Parameter(names = {"-th", "--matching-threshold"}, description = "The threshold used when matching subimages")
+    private Double matchingThreshold = 0.96;
+
+
     @Parameter(names = {"-cbs", "--continuous-block-size"}, description = "Assume that the subimages will match in blocks")
     private Integer continuousBlockSize = 3;
 
@@ -58,7 +62,7 @@ public class AnonymizeApp {
         System.out.println("List of subimages:");
         subImages.forEach(System.out::println);
 
-        VideoMasker masker = new VideoMasker(inputVideo, outputVideo, subImages);
+        VideoMasker masker = new VideoMasker(inputVideo, outputVideo, subImages, matchingThreshold);
         masker.run(continuousBlockSize);
     }
 }

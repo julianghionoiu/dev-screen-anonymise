@@ -14,15 +14,15 @@ import static org.bytedeco.javacpp.opencv_imgproc.*;
 
 public class ImageMasker implements AutoCloseable {
 
-    private static final double THRESHOLD = 0.98;
-
     private final String name;
     private final Mat subImage;
 
     private final Mat blurredSubImage;
     private final Mat subImageGrey;
+    private final double threshold;
 
-    public ImageMasker(Path subImagePath) throws ImageMaskerException {
+    public ImageMasker(Path subImagePath, double matchingThreshold) throws ImageMaskerException {
+        threshold = matchingThreshold;
         this.name = subImagePath.getFileName().toString();
         this.subImage = imread(subImagePath.toString());
         if (subImage.empty()) {
@@ -63,7 +63,7 @@ public class ImageMasker implements AutoCloseable {
                 matchTemplate(mainImageGrey, subImageGrey, match_result, TM_CCOEFF_NORMED);
 //                imwrite("build/after_match.png", multiply(match_result, 255).asMat());
 
-                threshold(match_result, match_result, THRESHOLD, 1, THRESH_TOZERO);
+                threshold(match_result, match_result, threshold, 1, THRESH_TOZERO);
 //                imwrite("build/"+frameIndex+"_after_threshold.png", multiply(match_result, 255).asMat());
 
                 match_result.convertTo(threshold_result, CV_8UC1);
