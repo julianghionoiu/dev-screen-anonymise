@@ -36,8 +36,8 @@ public class ImageMasker implements AutoCloseable {
 
         // Create the blurred image used for replacing
         this.blurredSubImage = imread(subImagePath.toString());
-        int kernelWidth = Math.round(blurredSubImage.size().width() / 4);
-        int kernelHeight = Math.round(blurredSubImage.size().height() / 4);
+        int kernelWidth = Math.round(blurredSubImage.size().width() / 2);
+        int kernelHeight = Math.round(blurredSubImage.size().height() / 2);
         Size kernelSize = new Size(kernelWidth, kernelHeight);
         opencv_imgproc.blur(blurredSubImage, blurredSubImage, kernelSize);
     }

@@ -16,17 +16,23 @@ To build, execute
 
 Create a folder to store the subimages containing sensitive data, say `subimages`
 
+Remove the beginning of a video if it contains unnecessary information
+```bash
+ffmpeg -i real-recording.mp4 -ss 00:12 rec-full.mp4
+```
+
+
 Go through the video frames and take note of the frames containing sensitive data.  
 Dump those frames using FFMpeg:
 ```bash
-ffmpeg -i real-recording.mp4 -ss 00:00:14.000 -vframes 1 subimages/screen.png
+ffmpeg -i rec-full.mp4 -ss 00:00:14.000 -vframes 1 subimages/screen.png
 ```
 
 Using GIMP, crop the areas containing the data you want to mask. Overwrite the original image.
 
 Do a trial run with sub-section of the video:
 ```bash
-ffmpeg -i real-recording.mp4 -ss 52:51 -t 60 rec-1min.mp4
+ffmpeg -i rec-full.mp4 -ss 52:51 -t 60 rec-1min.mp4
 ```
 
 # Executing
@@ -35,11 +41,11 @@ To anonymize a video, execute
 
 ```
 java -jar build/libs/dev-screen-anonymise-0.0.1-SNAPSHOT-all.jar \
-    --input <input.mp4> \
-    --output <outputpath.mp4> \
-    --subimages-dir <subimagesdir> \
-    --matching-threshold 0.95 \
-    --continuous-block-size 3
+    --input ./xyz/input.mp4 \
+    --output ./xyz/output.mp4 \
+    --subimages-dir ./xyz/subimages\
+    --matching-threshold 0.85 \
+    --continuous-block-size 7
 ```
 
 For example
