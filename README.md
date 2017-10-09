@@ -21,6 +21,12 @@ Remove the beginning of a video if it contains unnecessary information
 ffmpeg -i real-recording.mp4 -ss 00:12 rec-full.mp4
 ```
 
+If you need to merge two videos, here is how you do it:
+```bash
+ffmpeg -i screencast_20171001T185812.mp4 -i screencast_20171008T151852.mp4 \
+       -filter_complex "[0:v:0] [1:v:0] concat=n=2:v=1 [v]" \
+       -map "[v]" -c:v libx264 concatenated.mp4
+```
 
 Go through the video frames and take note of the frames containing sensitive data.  
 Dump those frames using FFMpeg:
@@ -32,7 +38,7 @@ Using GIMP, crop the areas containing the data you want to mask. Overwrite the o
 
 Do a trial run with sub-section of the video:
 ```bash
-ffmpeg -i rec-full.mp4 -ss 52:51 -t 60 rec-1min.mp4
+ffmpeg -i rec-full.mp4 -ss 00:00 -t 60 rec-1min.mp4
 ```
 
 # Executing
