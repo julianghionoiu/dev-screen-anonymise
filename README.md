@@ -12,6 +12,29 @@ To build, execute
 ./gradlew build shadowJar -i 
 ```
 
+
+# Concatenate video
+
+If you need to merge two videos, here is how you do it.
+
+
+Option 1. Concat demuxer
+```bash
+# mylist.txt
+file 'part1.mp4'
+file 'part2.mp4'
+
+ffmpeg -f concat -safe 0 -i mylist.txt -c copy output.mp4
+```
+
+Option 2. Concat protocol
+```bash
+ffmpeg -i screencast_20171001T185812.mp4 -i screencast_20171008T151852.mp4 \
+       -filter_complex "[0:v:0] [1:v:0] concat=n=2:v=1 [v]" \
+       -map "[v]" -c:v libx264 concatenated.mp4
+```
+
+
 # Prepare video
 
 Create a folder to store the subimages containing sensitive data, say `subimages`
@@ -19,13 +42,6 @@ Create a folder to store the subimages containing sensitive data, say `subimages
 Remove the beginning of a video if it contains unnecessary information
 ```bash
 ffmpeg -i real-recording.mp4 -ss 00:12 rec-full.mp4
-```
-
-If you need to merge two videos, here is how you do it:
-```bash
-ffmpeg -i screencast_20171001T185812.mp4 -i screencast_20171008T151852.mp4 \
-       -filter_complex "[0:v:0] [1:v:0] concat=n=2:v=1 [v]" \
-       -map "[v]" -c:v libx264 concatenated.mp4
 ```
 
 Go through the video frames and take note of the frames containing sensitive data.  
@@ -40,6 +56,7 @@ Do a trial run with sub-section of the video:
 ```bash
 ffmpeg -i rec-full.mp4 -ss 00:00 -t 60 rec-1min.mp4
 ```
+
 
 # Executing
 
