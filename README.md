@@ -24,14 +24,14 @@ Option 1. Concat demuxer
 file 'part1.mp4'
 file 'part2.mp4'
 
-ffmpeg -f concat -safe 0 -i mylist.txt -c copy output.mp4
+ffmpeg -f concat -safe 0 -i mylist.txt -c copy real-recording.mp4
 ```
 
 Option 2. Concat protocol
 ```bash
 ffmpeg -i screencast_20171001T185812.mp4 -i screencast_20171008T151852.mp4 \
        -filter_complex "[0:v:0] [1:v:0] concat=n=2:v=1 [v]" \
-       -map "[v]" -c:v libx264 concatenated.mp4
+       -map "[v]" -c:v libx264 real-recording.mp4
 ```
 
 
