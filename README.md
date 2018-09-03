@@ -12,6 +12,12 @@ To build, execute
 ./gradlew build shadowJar -i 
 ```
 
+## Get videos
+
+Download from S3
+```
+aws s3 cp "s3://tdl-official-videos/CHK/sagp01/" . --recursive --exclude "*" --include "screencast_*"
+```
 
 ## Concatenate video
 
@@ -40,7 +46,7 @@ Create a folder to store the subimages containing sensitive data, say `subimages
 
 Remove the beginning of a video if it contains unnecessary information
 ```bash
-ffmpeg -i real-recording.mp4 -ss 00:12 rec-full.mp4
+ffmpeg -i real-recording.mp4 -ss 01:00 rec-full.mp4
 ```
 
 Go through the video frames and take note of the frames containing sensitive data.
